@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+  "dboom",
+  "dboom-entity-macro"
+]

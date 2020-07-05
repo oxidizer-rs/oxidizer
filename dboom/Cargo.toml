@@ -1,0 +1,21 @@
+[package]
+
+name = "dboom"
+version = "0.1.0"
+authors = ["Gustavo Sampaio <gbritosampaio@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = "0.4.11"
+async-trait = "0.1.31"
+tokio = { version = "0.2", features = ["full"] }
+tokio-postgres = { version="0.5.4", features = ["with-chrono-0_4"]}
+postgres-openssl = "0.3.0"
+mobc = "0.5"
+barrel = { version = "0.6.5", features = ["pg"] }
+refinery = { version = "0.3.0", features = ["tokio-postgres"]}
+openssl = { version = "0.10", features = ["vendored"] }
+
+dboom-entity-macro = { path = "../dboom-entity-macro" }

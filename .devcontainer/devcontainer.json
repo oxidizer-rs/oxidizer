@@ -1,0 +1,40 @@
+// For format details, see https://aka.ms/vscode-remote/devcontainer.json or this file's README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.117.1/containers/docker-in-docker-compose
+// If you want to run as a non-root user in the container, see .devcontainer/docker-compose.yml.
+{
+	"name": "dboom",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "dboom",
+	"workspaceFolder": "/workspace",
+
+	"runArgs": [
+		"--cap-add=SYS_PTRACE",
+		"--security-opt",
+		"seccomp=unconfined"
+	],
+	// Set *default* container specific settings.json values on container create.
+	"settings": {
+		"lldb.executable": "/usr/bin/lldb",
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"rust-analyzer.updates.askBeforeDownload": false
+	},
+
+	// Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+		"ms-azuretools.vscode-docker",
+		// "rust-lang.rust",
+		"matklad.rust-analyzer",
+		"bungcip.better-toml",
+		"vadimcn.vscode-lldb",
+	],
+
+	// Uncomment the next line if you want start specific services in your Docker Compose config.
+	"runServices": ["db", "dboom"],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "docker --version",
+
+	// Uncomment to connect as a non-root user. See https://aka.ms/vscode-remote/containers/non-root.
+	// "remoteUser": "vscode"
+	"shutdownAction": "stopCompose"
+}
