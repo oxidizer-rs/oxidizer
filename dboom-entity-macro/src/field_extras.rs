@@ -1,4 +1,4 @@
-use syn::{Meta, Field, TypePath, Path, PathSegment, Ident};
+use syn::{Meta, Field, TypePath, Path, PathSegment};
 use proc_macro2::{TokenStream as TokenStream2};
 use quote::quote;
 
