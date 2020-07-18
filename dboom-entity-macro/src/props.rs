@@ -37,6 +37,14 @@ impl Props {
         self.get_fields_all().iter().map(|field| &field.ty).collect()
     }
 
+    pub fn get_fields_all_nullable(&self) -> Vec<bool> {
+        self.get_fields_all().iter().map(|field| field.is_nullable()).collect()
+    }
+
+    pub fn get_fields_all_indexed(&self) -> Vec<bool> {
+        self.get_fields_all().iter().map(|field| field.is_indexed()).collect()
+    }
+
     fn build_db_types(&self, fields: &Punctuated<Field, Comma>) -> Vec<TokenStream2> {
         fields.iter().map(|field| field.get_db_type()).collect()
     }

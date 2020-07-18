@@ -1,5 +1,8 @@
 use dboom_entity_macro::Entity;
+use dboom::entity::Entity;
 use crate as dboom;
+
+use chrono::{DateTime, Utc};
 
 #[derive(Entity)]
 #[derive(Default)]
@@ -7,6 +10,32 @@ struct TestEntity {
     #[primary_key]
     id: i32,
     name: String,
+
+    #[indexed]
+    integer: i32,
+    integer64: i64,
+
+    float: f32,
+    double: f64,
+
+    boolean: bool,
+
+    datetime: Option<chrono::DateTime<Utc>>,
+}
+
+#[derive(Entity)]
+struct TestRelation {
+    #[primary_key]
+    id: i32,
+    device_id: String,
+
+    entity_id: i32,
+}
+
+#[derive(Entity)]
+struct TestOnlyPK {
+    #[primary_key]
+    id: i32
 }
 
 #[tokio::test]
@@ -14,6 +43,13 @@ async fn test_entity_macro_clean() {
     let _obj = TestEntity{
         id: 0,
         name: "test".to_string(),
+        integer: 0,
+        integer64: 0,
+        float: 0.0,
+        double: 0.0,
+        boolean: false,
+
+        datetime: None,
     };
 }
 

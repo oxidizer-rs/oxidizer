@@ -16,7 +16,14 @@ impl EntityBuilder {
     fn build_save_fn(&self, props: &Props) -> TokenStream2 {
         let table_name = props.get_table_name();
         let fields_plain_names = props.get_fields_plain_names();
-        let fields_plain_numbered = props.get_fields_plain_numbered();
+
+        let numbered = props.get_fields_plain_numbered();
+        let fields_plain_numbered: Vec<String> = numbered.iter().enumerate().map(|(i, v)| {
+            if i == numbered.len() - 1 {
+                return v.to_string();
+            }
+            return format!("{},", v);
+        }).collect();
         let fields_plain_numbered_next_index = props.get_fields_plain_numbered_next_index();
 
         let primary_key = props.get_primary_key_field().unwrap();
@@ -30,18 +37,19 @@ impl EntityBuilder {
                 let _result = match self.#primary_key_ident {
                     v if self.#primary_key_ident == primary_key_default => {
                         creating = true;
+                        let query = concat!(
+                            "INSERT INTO ",
+                            #table_name,
+                            " (",
+                            stringify!(#(#fields_plain_names),*),
+                            ") values(",
+                            #( #fields_plain_numbered ,)*
+                            ") RETURNING ",
+                            stringify!(#primary_key_ident),
+                            ";"
+                        );
                         let rows = db.query(
-                            concat!(
-                                "INSERT INTO ",
-                                #table_name,
-                                " (",
-                                stringify!(#(#fields_plain_names),*),
-                                ") values(",
-                                #(#fields_plain_numbered),*,
-                                ") RETURNING ",
-                                stringify!(#primary_key_ident),
-                                ";"
-                            ),
+                            query,
                             &[#( &self.#fields_plain_names),*]
                         ).await?;
                         let first_row = rows.first().ok_or(dboom::db::Error::Other)?;
@@ -49,18 +57,19 @@ impl EntityBuilder {
                         1
                     },
                     id => {
+                        let query = concat!(
+                            "UPDATE ",
+                            #table_name,
+                            " SET ",
+                            #(stringify!(#fields_plain_names =), #fields_plain_numbered,)*
+                            " WHERE ",
+                            stringify!(#primary_key_ident),
+                            "= $",
+                            #fields_plain_numbered_next_index
+                        );
                         db.execute(
-                            concat!(
-                                "UPDATE ",
-                                #table_name,
-                                " SET ",
-                                #(stringify!(#fields_plain_names =), #fields_plain_numbered),*,
-                                " WHERE ",
-                                stringify!(#primary_key_ident),
-                                "= $",
-                                #fields_plain_numbered_next_index
-                            ),
-                            &[#( &self.#fields_plain_names),*, &self.#primary_key_ident],
+                            query,
+                            &[#( &self.#fields_plain_names,)* &self.#primary_key_ident],
                         ).await?
                     }
                 };
@@ -89,11 +98,20 @@ impl EntityBuilder {
         let table_name = props.get_table_name();
         let fields_all_names = props.get_fields_all_names();
         let fields_all_db_types = props.get_fields_all_db_types();
+        let fields_all_nullable = props.get_fields_all_nullable();
+        let fields_all_indexed = props.get_fields_all_indexed();
         quote! {
              async fn create_migration() -> dboom::db::DBResult<dboom::Migration> {
                 let mut m = dboom::Migration::new();
                 m.create_table(#table_name, |t| {
-                    #(t.add_column(stringify!(#fields_all_names), #fields_all_db_types);)*
+                    #(t
+                        .add_column(
+                            stringify!(#fields_all_names),
+                            #fields_all_db_types
+                                .nullable(#fields_all_nullable)
+                                .indexed(#fields_all_indexed)
+                        )
+                    ;)*
                 });
                 Ok(m)
             }
@@ -172,8 +190,6 @@ impl EntityBuilder {
         let name = props.get_name();
 
         let expanded = quote! {
-            pub use dboom::entity::Entity;
-
             #[dboom::async_trait]
             impl dboom::entity::Entity for #name {
                 #save_fn
