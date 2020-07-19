@@ -58,6 +58,7 @@ pub enum Error {
     MobcError(mobc::Error<tokio_postgres::Error>),
     RefineryError(refinery::Error),
     DoesNotExist,
+    ReferencedModelIsNotInDB,
     Other,
 }
 

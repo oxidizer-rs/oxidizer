@@ -12,6 +12,7 @@ pub trait Entity: Sized {
 
     fn from_row(row: &Row) -> Self;
     async fn create_migration() -> DBResult<Migration>;
+    fn get_table_name() -> String;
 
     async fn find(db: &DB, query: &str, params: &'_ [&'_ (dyn ToSql + Sync)]) -> DBResult<Vec<Self>>;
     async fn first(db: &DB, query: &str, params: &'_ [&'_ (dyn ToSql + Sync)]) -> DBResult<Option<Self>>;

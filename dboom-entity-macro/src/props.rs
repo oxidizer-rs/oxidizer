@@ -5,7 +5,7 @@ use syn::{Data, DataStruct, DeriveInput, Fields, Meta, Type, Ident, punctuated::
 
 use super::field_extras::*;
 
-pub(crate) struct Props {
+pub struct Props {
     input: DeriveInput,
 }
 
@@ -110,5 +110,9 @@ impl Props {
         }
 
         None
+    }
+
+    pub fn get_fields_foreign(&self) -> Vec<&Field> {
+        self.get_fields_all().iter().filter(|field| field.parse_relation().is_some()).collect()
     }
 }

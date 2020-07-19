@@ -1,9 +1,12 @@
 use proc_macro::TokenStream;
 use proc_macro2::{TokenStream as TokenStream2};
-use quote::{quote};
-use syn::{parse_macro_input, DeriveInput};
+use quote::{quote, format_ident};
+use syn::{parse_macro_input, DeriveInput, Ident};
 
 use super::props::*;
+use super::field_extras::*;
+use inflector::cases::snakecase::to_snake_case;
+use crate::relation_attr::RelationAttr;
 
 pub struct EntityBuilder {
 }
@@ -169,6 +172,54 @@ impl EntityBuilder {
         }
     }
 
+    fn build_foreign_helpers(&self, props: &Props) -> Vec<TokenStream2> {
+        let name = props.get_name();
+
+        let foreign_fields = props.get_fields_foreign();
+
+        foreign_fields.iter().map(|field| {
+            let relation = field.parse_relation().unwrap();
+            let local_key = field.ident.clone().unwrap();
+            let get_ident = format_ident!("get_{}", to_snake_case(&relation.model));
+            let set_ident = format_ident!("set_{}", to_snake_case(&relation.model));
+            let trait_ident = format_ident!("Accessor{}{}", name, relation.model);
+            let model = format_ident!("{}", relation.model);
+            let key = format_ident!("{}", relation.key);
+
+            quote! {
+                #[dboom::async_trait]
+                pub trait #trait_ident {
+                    async fn #get_ident(&self, db: &dboom::db::DB) -> dboom::db::DBResult<#model>;
+                    async fn #set_ident(&mut self, db: &dboom::db::DB, v: &#model) -> dboom::db::DBResult<()>;
+                }
+
+                #[dboom::async_trait]
+                impl #trait_ident for #name {
+                    async fn #get_ident(&self, db: &dboom::db::DB) -> dboom::db::DBResult<#model> {
+                        let table_name = <#model>::get_table_name();
+                        let query = format!("select * from {} where {} = $1 limit 1", &table_name, stringify!(#key));
+                        let results = db.query(&query, &[&self.#local_key]).await?;
+                        if results.len() == 0 {
+                            return Err(dboom::db::Error::DoesNotExist);
+                        }
+
+                        Ok(#model::from_row(&results[0]))
+                    }
+
+                    async fn #set_ident(&mut self, db: &dboom::db::DB, v: &#model) -> dboom::db::DBResult<()> {
+                        if v.#key == Default::default() {
+                            return Err(dboom::db::Error::ReferencedModelIsNotInDB);
+                        }
+
+                        self.#local_key = v.#key;
+                        self.save(db).await?;
+                        Ok(())
+                    }
+                }
+            }
+        }).collect()
+    }
+
     pub fn build(&self, item: TokenStream) -> TokenStream {
         let input = parse_macro_input!(item as DeriveInput);
 
@@ -178,7 +229,7 @@ impl EntityBuilder {
             return ts;
         }
 
-        eprintln!("{:#?}", props.get_fields_all_types());
+        eprintln!("{:#?}", props.get_fields_all());
 
         let save_fn = self.build_save_fn(&props);
         let delete_fn = self.build_delete_fn(&props);
@@ -188,6 +239,9 @@ impl EntityBuilder {
         let first_fn = self.build_first_fn(&props);
 
         let name = props.get_name();
+        let table_name = props.get_table_name();
+
+        let foreign_helpers = self.build_foreign_helpers(&props);
 
         let expanded = quote! {
             #[dboom::async_trait]
@@ -196,14 +250,20 @@ impl EntityBuilder {
 
                 #delete_fn
 
+                #find_fn
+
+                #first_fn
+
                 #from_row_fn
 
                 #create_migration_fn
 
-                #find_fn
-
-                #first_fn
+                fn get_table_name() -> String {
+                    #table_name.to_string()
+                }
             }
+
+            #(#foreign_helpers)*
         };
 
         // Hand the output tokens back to the compiler

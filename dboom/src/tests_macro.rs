@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 
 #[derive(Entity)]
 #[derive(Default)]
-struct TestEntity {
+pub struct TestEntity {
     #[primary_key]
     id: i32,
     name: String,
@@ -20,7 +20,7 @@ struct TestEntity {
 
     boolean: bool,
 
-    datetime: Option<chrono::DateTime<Utc>>,
+    datetime: Option<DateTime<Utc>>,
 }
 
 #[derive(Entity)]
@@ -29,6 +29,7 @@ struct TestRelation {
     id: i32,
     device_id: String,
 
+    #[relation(model="TestEntity", key="id")]
     entity_id: i32,
 }
 
@@ -134,4 +135,43 @@ async fn test_entity_macro_delete() {
 
     let result = TestEntity::first(&db, "id = $1", &[&obj.id]).await.unwrap();
     assert!(result.is_none())
+}
+
+#[tokio::test]
+async fn test_relation() {
+    let db = super::db::test_utils::create_test_db("test_relation", false).await;
+
+    let m = TestEntity::create_migration().await.unwrap();
+    let sql = m.make::<dboom::barrel::backend::Pg>();
+    db.execute(&sql, &[]).await.unwrap();
+
+    let m = TestRelation::create_migration().await.unwrap();
+    let sql = m.make::<dboom::barrel::backend::Pg>();
+    db.execute(&sql, &[]).await.unwrap();
+
+    let mut entity = TestEntity::default();
+    entity.name = "test".to_string();
+    let creating = entity.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let mut entity2 = TestEntity::default();
+    entity2.name = "test 2".to_string();
+    let creating = entity2.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let mut obj = TestRelation{
+        id: 0,
+        device_id: "abc12".to_string(),
+        entity_id: entity.id,
+    };
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let loaded = obj.get_test_entity(&db).await.unwrap();
+    assert_eq!(entity.id, loaded.id);
+
+    obj.set_test_entity(&db, &entity2).await.unwrap();
+
+    let loaded = obj.get_test_entity(&db).await.unwrap();
+    assert_eq!(entity2.id, loaded.id);
 }
