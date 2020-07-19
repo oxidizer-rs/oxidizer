@@ -4,7 +4,7 @@ use quote::{format_ident, quote};
 use darling::FromMeta;
 
 use super::utils::{iterate_path_arguments, check_type_order};
-use super::relation_attr::RelationAttr;
+use super::attrs::RelationAttr;
 
 pub trait FieldExtras {
     fn is_primary_key(&self) -> bool;

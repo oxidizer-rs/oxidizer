@@ -4,14 +4,17 @@ use quote::{quote, quote_spanned};
 use syn::{Data, DataStruct, DeriveInput, Fields, Meta, Type, Ident, punctuated::{Punctuated}, Field, token::Comma};
 
 use super::field_extras::*;
+use super::attrs::{EntityAttr, IndexAttr};
 
 pub struct Props {
     input: DeriveInput,
+    attrs: Option<EntityAttr>,
+    indexes: Vec<IndexAttr>,
 }
 
 impl Props {
-    pub fn new(input: DeriveInput) -> Self {
-        Props{input: input}
+    pub fn new(input: DeriveInput, attrs: Option<EntityAttr>, indexes: Vec<IndexAttr>) -> Self {
+        Props{input: input, attrs: attrs, indexes: indexes}
     }
 
     pub fn get_name(&self) -> &Ident {
@@ -19,7 +22,13 @@ impl Props {
     }
 
     pub fn get_table_name(&self) -> String {
-        self.get_name().to_string().to_lowercase()
+        match self.attrs.as_ref() {
+            Some(attrs) => match attrs.table_name.as_ref() {
+                Some(name) => name.to_string(),
+                None => self.get_name().to_string().to_lowercase(),
+            },
+            None => self.get_name().to_string().to_lowercase(),
+        }
     }
 
     pub fn get_fields_all(&self) -> &Punctuated<Field, Comma> {
@@ -114,5 +123,9 @@ impl Props {
 
     pub fn get_fields_foreign(&self) -> Vec<&Field> {
         self.get_fields_all().iter().filter(|field| field.parse_relation().is_some()).collect()
+    }
+
+    pub fn get_indexes(&self) -> Vec<IndexAttr> {
+        self.indexes.clone()
     }
 }

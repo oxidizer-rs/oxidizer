@@ -1,12 +1,13 @@
 use proc_macro::TokenStream;
 use proc_macro2::{TokenStream as TokenStream2};
 use quote::{quote, format_ident};
-use syn::{parse_macro_input, DeriveInput, Ident};
+use syn::{parse_macro_input, DeriveInput};
+use inflector::cases::snakecase::to_snake_case;
+use darling::{FromMeta};
 
 use super::props::*;
 use super::field_extras::*;
-use inflector::cases::snakecase::to_snake_case;
-use crate::relation_attr::RelationAttr;
+use super::attrs::{EntityAttr, IndexAttr};
 
 pub struct EntityBuilder {
 }
@@ -103,6 +104,19 @@ impl EntityBuilder {
         let fields_all_db_types = props.get_fields_all_db_types();
         let fields_all_nullable = props.get_fields_all_nullable();
         let fields_all_indexed = props.get_fields_all_indexed();
+
+        let indexes: Vec<TokenStream2> = props.get_indexes().iter().map(|index| {
+            let index_name = &index.name;
+            let columns: Vec<&str> = index.columns.split(",").map(|c| c.trim()).collect();
+            let unique = index.unique;
+            quote! {
+                t.add_index(
+                    #index_name,
+                    dboom::types::index(vec![ #(#columns),* ]).unique(#unique)
+                );
+            }
+        }).collect();
+
         quote! {
              async fn create_migration() -> dboom::db::DBResult<dboom::Migration> {
                 let mut m = dboom::Migration::new();
@@ -115,6 +129,8 @@ impl EntityBuilder {
                                 .indexed(#fields_all_indexed)
                         )
                     ;)*
+
+                    #(#indexes)*
                 });
                 Ok(m)
             }
@@ -138,7 +154,7 @@ impl EntityBuilder {
         let name = props.get_name();
         let table_name = props.get_table_name();
         quote! {
-            async fn first(db: &dboom::db::DB, condition: &str, params: &'_ [&'_ (dyn dboom::db_types::ToSql + Sync)]) -> dboom::db::DBResult<Option<#name>> {
+            async fn first(db: &dboom::db::DB, condition: &str, params: &'_ [&'_ (dyn dboom::db_types::ToSql + Sync)]) -> dboom::db::DBResult<std::option::Option<#name>> {
                 let query_str = format!("SELECT * FROM {} WHERE {} LIMIT 1", #table_name, condition);
                 let rows = db.query(&query_str, params).await?;
                 let mut results: Vec<#name> = rows.iter().map(|row| Self::from_row(row)).collect();
@@ -182,7 +198,7 @@ impl EntityBuilder {
             let local_key = field.ident.clone().unwrap();
             let get_ident = format_ident!("get_{}", to_snake_case(&relation.model));
             let set_ident = format_ident!("set_{}", to_snake_case(&relation.model));
-            let trait_ident = format_ident!("Accessor{}{}", name, relation.model);
+            let trait_ident = format_ident!("__Accessor{}{}", name, relation.model);
             let model = format_ident!("{}", relation.model);
             let key = format_ident!("{}", relation.key);
 
@@ -240,13 +256,29 @@ impl EntityBuilder {
     pub fn build(&self, item: TokenStream) -> TokenStream {
         let input = parse_macro_input!(item as DeriveInput);
 
-        let props = Props::new(input);
+        let mut attrs: Option<EntityAttr> = None;
+
+        let mut indexes: Vec<IndexAttr> = vec![];
+
+        for option in input.attrs.iter() {
+            let option = option.parse_meta().unwrap();
+            if let Ok(v) = EntityAttr::from_meta(&option) {
+                attrs = Some(v);
+            }
+
+            if let Ok(v) = IndexAttr::from_meta(&option) {
+                indexes.push(v);
+            }
+        }
+
+        // eprintln!("{:#?}", input);
+        // eprintln!("{:#?}", attrs);
+
+        let props = Props::new(input, attrs, indexes);
 
         if let Some(ts) = props.check() {
             return ts;
         }
-
-        eprintln!("{:#?}", props.get_fields_all());
 
         let save_fn = self.build_save_fn(&props);
         let delete_fn = self.build_delete_fn(&props);

@@ -14,6 +14,7 @@ use tokio_postgres::{
     row::Row,
     Client, Config, NoTls, Socket,
 };
+use barrel::{backend::Pg, Migration};
 
 pub struct ConnectionManager<Tls> {
     config: Config,
@@ -176,12 +177,14 @@ impl DB {
         }
     }
 
-    pub async fn migrate(&self) -> Result<Report, Error> {
-        // self.migrate_with_runner(&migrations::runner()).await
+    pub async fn migrate(&self, m: Migration) -> Result<Report, Error> {
+        // Migration::new()
+        // let runner = Runner::new(&[m]);
+        // self.migrate_with_runner(&runner).await
         todo!()
     }
 
-    pub async fn migrate_with_runner(&self, runner: &Runner) -> Result<Report, Error> {
+    async fn migrate_with_runner(&self, runner: &Runner) -> Result<Report, Error> {
         match &self.pool {
             ConnectionPool::TLS(pool) => {
                 let mut client = pool.get().await.map_err(|err| Error::MobcError(err))?;

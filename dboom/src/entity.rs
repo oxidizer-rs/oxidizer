@@ -1,6 +1,6 @@
 use tokio_postgres::Row;
-use barrel::Migration;
 
+use super::Migration;
 use super::async_trait;
 use super::db::{DBResult, DB};
 use super::db_types::ToSql;

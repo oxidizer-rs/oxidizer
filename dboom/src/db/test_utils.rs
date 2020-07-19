@@ -16,7 +16,7 @@ pub async fn create_test_db(name: &str, migrate: bool) -> DB {
     let db = DB::connect(&uri, 50, None).await.unwrap();
 
     if migrate {
-        db.migrate().await.unwrap();
+        // db.migrate().await.unwrap();
     }
 
     db

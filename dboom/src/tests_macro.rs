@@ -56,6 +56,26 @@ struct TestNullableRelation {
     entity_id: Option<i32>,
 }
 
+#[derive(Default, Entity)]
+#[entity(table_name="custom")]
+struct TestCustomTableName {
+    #[primary_key]
+    id: i32,
+}
+
+#[derive(Default, Entity)]
+#[entity(table_name="custom2")]
+#[index(name="myindex", columns="name, date", unique)]
+#[index(name="myindex2", columns="email", unique)]
+struct TestCustomIndexes {
+    #[primary_key]
+    id: i32,
+
+    name: String,
+    date: String,
+    email: String,
+}
+
 #[tokio::test]
 async fn test_entity_macro_clean() {
     let _obj = TestEntity{
@@ -248,4 +268,63 @@ async fn test_relation_nullable() {
 
     let loaded = obj.get_test_entity(&db).await.unwrap();
     assert_eq!(entity.id, loaded.id);
+}
+
+#[tokio::test]
+async fn test_custom_table_name() {
+    assert_eq!("custom", TestCustomTableName::get_table_name());
+}
+
+#[tokio::test]
+async fn test_indexes() {
+    let db = super::db::test_utils::create_test_db("test_indexes", false).await;
+
+    let m = TestCustomIndexes::create_migration().await.unwrap();
+    db.migrate(m).await.unwrap();
+
+    let mut obj = TestCustomIndexes{
+        id: 0,
+        name: "test".to_string(),
+        date: "07/19/2020".to_string(),
+        email: "me@example.com".to_string(),
+
+    };
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(true, creating);
+
+    let mut obj2 = TestCustomIndexes{
+        id: 0,
+        name: "test".to_string(),
+        date: "07/19/2020".to_string(),
+        email: "me2@example.com".to_string(),
+
+    };
+    assert!(obj2.save(&db).await.is_err());
+
+    let mut obj2 = TestCustomIndexes{
+        id: 0,
+        name: "test2".to_string(),
+        date: "07/19/2020".to_string(),
+        email: "me2@example.com".to_string(),
+
+    };
+    assert!(obj2.save(&db).await.is_ok());
+
+    let mut obj2 = TestCustomIndexes{
+        id: 0,
+        name: "test3".to_string(),
+        date: "07/19/2020".to_string(),
+        email: "me2@example.com".to_string(),
+
+    };
+    assert!(obj2.save(&db).await.is_err());
+
+    let mut obj2 = TestCustomIndexes{
+        id: 0,
+        name: "test3".to_string(),
+        date: "07/19/2020".to_string(),
+        email: "me3@example.com".to_string(),
+
+    };
+    assert!(obj2.save(&db).await.is_ok());
 }
