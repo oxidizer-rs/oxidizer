@@ -39,6 +39,23 @@ struct TestOnlyPK {
     id: i32
 }
 
+#[derive(Default, Entity)]
+struct TestNullable {
+    #[primary_key]
+    id: i32,
+
+    name: Option<String>,
+}
+
+#[derive(Default, Entity)]
+struct TestNullableRelation {
+    #[primary_key]
+    id: i32,
+
+    #[relation(model="TestEntity", key="id")]
+    entity_id: Option<i32>,
+}
+
 #[tokio::test]
 async fn test_entity_macro_clean() {
     let _obj = TestEntity{
@@ -174,4 +191,61 @@ async fn test_relation() {
 
     let loaded = obj.get_test_entity(&db).await.unwrap();
     assert_eq!(entity2.id, loaded.id);
+}
+
+#[tokio::test]
+async fn test_nullable() {
+    let db = super::db::test_utils::create_test_db("test_nullable", false).await;
+
+    let m = TestNullable::create_migration().await.unwrap();
+    let sql = m.make::<dboom::barrel::backend::Pg>();
+    db.execute(&sql, &[]).await.unwrap();
+
+    let mut obj = TestNullable::default();
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    assert_eq!(None, obj.name);
+
+    let loaded = TestNullable::first(&db, "id = $1", &[&obj.id]).await.unwrap().unwrap();
+    assert_eq!(None, loaded.name);
+
+    obj.name = Some("test".to_string());
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, false);
+
+    let loaded = TestNullable::first(&db, "id = $1", &[&obj.id]).await.unwrap().unwrap();
+    assert_eq!(Some("test".to_string()), loaded.name);
+}
+
+#[tokio::test]
+async fn test_relation_nullable() {
+    let db = super::db::test_utils::create_test_db("test_relation_nullable", false).await;
+
+    let m = TestEntity::create_migration().await.unwrap();
+    let sql = m.make::<dboom::barrel::backend::Pg>();
+    db.execute(&sql, &[]).await.unwrap();
+
+    let m = TestNullableRelation::create_migration().await.unwrap();
+    let sql = m.make::<dboom::barrel::backend::Pg>();
+    db.execute(&sql, &[]).await.unwrap();
+
+    let mut entity = TestEntity::default();
+    entity.name = "test".to_string();
+    let creating = entity.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let mut obj = TestNullableRelation{
+        id: 0,
+        entity_id: None,
+    };
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    assert!(obj.get_test_entity(&db).await.is_err());
+
+    obj.set_test_entity(&db, &entity).await.unwrap();
+
+    let loaded = obj.get_test_entity(&db).await.unwrap();
+    assert_eq!(entity.id, loaded.id);
 }

@@ -186,6 +186,19 @@ impl EntityBuilder {
             let model = format_ident!("{}", relation.model);
             let key = format_ident!("{}", relation.key);
 
+            let local_key_set = match field.is_nullable() {
+                true => quote! {
+                    let key_default = Default::default();
+                    self.#local_key = match v.#key {
+                        vv if vv == key_default => None,
+                        vv => Some(vv),
+                    };
+                },
+                false => quote! {
+                    self.#local_key = v.#key;
+                },
+            };
+
             quote! {
                 #[dboom::async_trait]
                 pub trait #trait_ident {
@@ -196,6 +209,10 @@ impl EntityBuilder {
                 #[dboom::async_trait]
                 impl #trait_ident for #name {
                     async fn #get_ident(&self, db: &dboom::db::DB) -> dboom::db::DBResult<#model> {
+                        if self.#local_key == Default::default() {
+                            return Err(dboom::db::Error::DoesNotExist);
+                        }
+
                         let table_name = <#model>::get_table_name();
                         let query = format!("select * from {} where {} = $1 limit 1", &table_name, stringify!(#key));
                         let results = db.query(&query, &[&self.#local_key]).await?;
@@ -211,7 +228,7 @@ impl EntityBuilder {
                             return Err(dboom::db::Error::ReferencedModelIsNotInDB);
                         }
 
-                        self.#local_key = v.#key;
+                        #local_key_set
                         self.save(db).await?;
                         Ok(())
                     }

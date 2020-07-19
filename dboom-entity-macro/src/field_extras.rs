@@ -14,11 +14,16 @@ pub trait FieldExtras {
     fn get_db_type(&self) -> TokenStream2;
 }
 
-fn is_chrono_option(segment: &PathSegment) -> bool {
-    let expected: Vec<String> = vec!["Option".to_owned(), "DateTime".to_owned(), "Utc".to_owned()];
-    let res = iterate_path_arguments(segment, &expected, 0);
+fn is_typed_with(segment: &PathSegment, expected: Vec<&str>) -> bool {
+    let expected = expected.iter().map(|v| v.to_string()).collect();
+    iterate_path_arguments(segment, &expected, 0)
+}
 
-    res
+fn is_chrono_option(segment: &PathSegment) -> bool {
+    let expected: Vec<&str> = vec!["Option", "DateTime", "Utc"];
+    let no_option_expected: Vec<&str> = vec!["DateTime", "Utc"];
+
+    is_typed_with(segment, expected) || is_typed_with(segment, no_option_expected)
 }
 
 fn search_attr_in_field(field: &Field, attr: &str) -> bool {
@@ -91,30 +96,66 @@ impl FieldExtras for Field {
             PathSegment{ident, ..} if ident.to_string() == "String" => {
                 quote! { dboom::types::text() }
             },
+            segment if is_typed_with(segment, vec!["Option", "String"]) => {
+                quote! { dboom::types::text() }
+            },
+
             PathSegment{ident, ..} if ident.to_string() == "i8" => {
                 quote! { dboom::types::custom("char") }
             },
+            segment if is_typed_with(segment, vec!["Option", "i8"]) => {
+                quote! { dboom::types::text() }
+            },
+
             PathSegment{ident, ..} if ident.to_string() == "i16" => {
                 quote! { dboom::types::custom("SMALLINT") }
             },
+            segment if is_typed_with(segment, vec!["Option", "i16"]) => {
+                quote! { dboom::types::text() }
+            },
+
             PathSegment{ident, ..} if ident.to_string() == "i32" => {
                 quote! { dboom::types::integer() }
             },
+            segment if is_typed_with(segment, vec!["Option", "i32"]) => {
+                quote! { dboom::types::text() }
+            },
+
             PathSegment{ident, ..} if ident.to_string() == "u32" => {
                 quote! { dboom::types::custom("OID") }
             },
+            segment if is_typed_with(segment, vec!["Option", "u32"]) => {
+                quote! { dboom::types::text() }
+            },
+
             PathSegment{ident, ..} if ident.to_string() == "i64" => {
                 quote! { dboom::types::custom("BIGINT") }
             },
+            segment if is_typed_with(segment, vec!["Option", "i64"]) => {
+                quote! { dboom::types::text() }
+            },
+
             PathSegment{ident, ..} if ident.to_string() == "f32" => {
                 quote! { dboom::types::custom("REAL") }
             },
+            segment if is_typed_with(segment, vec!["Option", "f32"]) => {
+                quote! { dboom::types::text() }
+            },
+
             PathSegment{ident, ..} if ident.to_string() == "f64" => {
                 quote! { dboom::types::custom("DOUBLE PRECISION") }
             },
+            segment if is_typed_with(segment, vec!["Option", "f64"]) => {
+                quote! { dboom::types::text() }
+            },
+
             PathSegment{ident, ..} if ident.to_string() == "bool" => {
                 quote! { dboom::types::boolean() }
             },
+            segment if is_typed_with(segment, vec!["Option", "bool"]) => {
+                quote! { dboom::types::text() }
+            },
+
             segment if is_chrono_option(segment) => {
                 quote! { dboom::types::custom("timestamp with time zone") }
             },
