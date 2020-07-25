@@ -119,8 +119,8 @@ impl EntityBuilder {
 
         quote! {
              async fn create_migration() -> dboom::db::DBResult<dboom::Migration> {
-                let mut m = dboom::Migration::new();
-                m.create_table_if_not_exists(#table_name, |t| {
+                let mut m = dboom::Migration::new(#table_name);
+                m.raw.create_table(#table_name, |t| {
                     #(t
                         .add_column(
                             stringify!(#fields_all_names),
@@ -132,6 +132,7 @@ impl EntityBuilder {
 
                     #(#indexes)*
                 });
+
                 Ok(m)
             }
         }
@@ -318,7 +319,7 @@ impl EntityBuilder {
         // Hand the output tokens back to the compiler
         let r = TokenStream::from(expanded);
 
-        println!("{}", r);
+        // println!("{}", r);
 
         r
     }

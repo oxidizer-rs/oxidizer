@@ -6,7 +6,7 @@ use postgres_openssl::MakeTlsConnector;
 use std::str::FromStr;
 use refinery::{Runner, Report};
 
-// use super::super::models::migrations;
+use super::super::Migration;
 
 use tokio_postgres::{
     tls::{MakeTlsConnect, TlsConnect},
@@ -14,7 +14,7 @@ use tokio_postgres::{
     row::Row,
     Client, Config, NoTls, Socket,
 };
-use barrel::{backend::Pg, Migration};
+use barrel::{backend::Pg};
 
 pub struct ConnectionManager<Tls> {
     config: Config,
@@ -201,12 +201,23 @@ impl DB {
         }
     }
 
-    pub async fn migrate_table(&self, m: &Migration) -> Result<(), Error> {
-        let sql = m.make::<Pg>();
-        self.execute_raw(&sql).await
+    pub async fn migrate_tables(&self, ms: &[Migration]) -> Result<Report, Error> {
+        let ref_migrations: Vec<refinery::Migration> = ms.as_ref().iter().enumerate().filter_map(|(i, m)| {
+            let sql = m.raw.make::<Pg>();
+
+            let name = format!("V{}__{}.rs", i, m.name);
+
+            let migration = refinery::Migration::unapplied(&name, &sql).unwrap();
+
+            Some(migration)
+        }).collect();
+
+        let runner = refinery::Runner::new(&ref_migrations).set_abort_divergent(false);
+
+        self.migrate(&runner).await
     }
 
-    async fn migrate(&self, runner: &Runner) -> Result<Report, Error> {
+    pub async fn migrate(&self, runner: &Runner) -> Result<Report, Error> {
         match &self.pool {
             ConnectionPool::TLS(pool) => {
                 let mut client = pool.get().await.map_err(|err| Error::MobcError(err))?;
@@ -218,4 +229,5 @@ impl DB {
             }
         }
     }
+
 }

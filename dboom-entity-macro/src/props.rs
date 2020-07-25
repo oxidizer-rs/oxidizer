@@ -5,6 +5,7 @@ use syn::{Data, DataStruct, DeriveInput, Fields, Meta, Type, Ident, punctuated::
 
 use super::field_extras::*;
 use super::attrs::{EntityAttr, IndexAttr};
+use inflector::cases::snakecase::to_snake_case;
 
 pub struct Props {
     input: DeriveInput,
@@ -22,12 +23,14 @@ impl Props {
     }
 
     pub fn get_table_name(&self) -> String {
+        let snaked_name = to_snake_case(&self.get_name().to_string());
+
         match self.attrs.as_ref() {
             Some(attrs) => match attrs.table_name.as_ref() {
                 Some(name) => name.to_string(),
-                None => self.get_name().to_string().to_lowercase(),
+                None => snaked_name,
             },
-            None => self.get_name().to_string().to_lowercase(),
+            None => snaked_name,
         }
     }
 
