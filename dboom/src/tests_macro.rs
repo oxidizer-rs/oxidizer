@@ -93,11 +93,10 @@ async fn test_entity_macro_clean() {
 
 #[tokio::test]
 async fn test_entity_macro_save() {
-    let db = super::db::test_utils::create_test_db("test_entity_macro_save", false).await;
+    let db = super::db::test_utils::create_test_db("test_entity_macro_save").await;
 
     let m = TestEntity::create_migration().await.unwrap();
-    let sql = m.make::<dboom::barrel::backend::Pg>();
-    db.execute(&sql, &[]).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let mut obj = TestEntity::default();
     obj.name = "test".to_string();
@@ -111,11 +110,10 @@ async fn test_entity_macro_save() {
 
 #[tokio::test]
 async fn test_entity_macro_find() {
-    let db = super::db::test_utils::create_test_db("test_entity_macro_find", false).await;
+    let db = super::db::test_utils::create_test_db("test_entity_macro_find").await;
 
     let m = TestEntity::create_migration().await.unwrap();
-    let sql = m.make::<dboom::barrel::backend::Pg>();
-    db.execute(&sql, &[]).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let mut obj = TestEntity::default();
     obj.name = "test".to_string();
@@ -128,11 +126,10 @@ async fn test_entity_macro_find() {
 
 #[tokio::test]
 async fn test_entity_macro_first() {
-    let db = super::db::test_utils::create_test_db("test_entity_macro_first", false).await;
+    let db = super::db::test_utils::create_test_db("test_entity_macro_first").await;
 
     let m = TestEntity::create_migration().await.unwrap();
-    let sql = m.make::<dboom::barrel::backend::Pg>();
-    db.execute(&sql, &[]).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let mut obj = TestEntity::default();
     obj.name = "test".to_string();
@@ -149,11 +146,10 @@ async fn test_entity_macro_first() {
 
 #[tokio::test]
 async fn test_entity_macro_delete() {
-    let db = super::db::test_utils::create_test_db("test_entity_macro_delete", false).await;
+    let db = super::db::test_utils::create_test_db("test_entity_macro_delete").await;
 
     let m = TestEntity::create_migration().await.unwrap();
-    let sql = m.make::<dboom::barrel::backend::Pg>();
-    db.execute(&sql, &[]).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let mut obj = TestEntity::default();
     obj.name = "test".to_string();
@@ -176,15 +172,13 @@ async fn test_entity_macro_delete() {
 
 #[tokio::test]
 async fn test_relation() {
-    let db = super::db::test_utils::create_test_db("test_relation", false).await;
+    let db = super::db::test_utils::create_test_db("test_relation").await;
 
     let m = TestEntity::create_migration().await.unwrap();
-    let sql = m.make::<dboom::barrel::backend::Pg>();
-    db.execute(&sql, &[]).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let m = TestRelation::create_migration().await.unwrap();
-    let sql = m.make::<dboom::barrel::backend::Pg>();
-    db.execute(&sql, &[]).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let mut entity = TestEntity::default();
     entity.name = "test".to_string();
@@ -215,11 +209,10 @@ async fn test_relation() {
 
 #[tokio::test]
 async fn test_nullable() {
-    let db = super::db::test_utils::create_test_db("test_nullable", false).await;
+    let db = super::db::test_utils::create_test_db("test_nullable").await;
 
     let m = TestNullable::create_migration().await.unwrap();
-    let sql = m.make::<dboom::barrel::backend::Pg>();
-    db.execute(&sql, &[]).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let mut obj = TestNullable::default();
     let creating = obj.save(&db).await.unwrap();
@@ -240,15 +233,13 @@ async fn test_nullable() {
 
 #[tokio::test]
 async fn test_relation_nullable() {
-    let db = super::db::test_utils::create_test_db("test_relation_nullable", false).await;
+    let db = super::db::test_utils::create_test_db("test_relation_nullable").await;
 
     let m = TestEntity::create_migration().await.unwrap();
-    let sql = m.make::<dboom::barrel::backend::Pg>();
-    db.execute(&sql, &[]).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let m = TestNullableRelation::create_migration().await.unwrap();
-    let sql = m.make::<dboom::barrel::backend::Pg>();
-    db.execute(&sql, &[]).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let mut entity = TestEntity::default();
     entity.name = "test".to_string();
@@ -277,10 +268,10 @@ async fn test_custom_table_name() {
 
 #[tokio::test]
 async fn test_indexes() {
-    let db = super::db::test_utils::create_test_db("test_indexes", false).await;
+    let db = super::db::test_utils::create_test_db("test_indexes").await;
 
     let m = TestCustomIndexes::create_migration().await.unwrap();
-    db.migrate(m).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
 
     let mut obj = TestCustomIndexes{
         id: 0,

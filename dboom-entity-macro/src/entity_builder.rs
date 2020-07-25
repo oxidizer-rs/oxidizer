@@ -198,7 +198,7 @@ impl EntityBuilder {
             let local_key = field.ident.clone().unwrap();
             let get_ident = format_ident!("get_{}", to_snake_case(&relation.model));
             let set_ident = format_ident!("set_{}", to_snake_case(&relation.model));
-            let trait_ident = format_ident!("__Accessor{}{}", name, relation.model);
+            let trait_ident = format_ident!("__Accessor{}To{}", name, relation.model);
             let model = format_ident!("{}", relation.model);
             let key = format_ident!("{}", relation.key);
 

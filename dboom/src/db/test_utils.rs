@@ -1,7 +1,7 @@
 
 use super::super::db::*;
 
-pub async fn create_test_db(name: &str, migrate: bool) -> DB {
+pub async fn create_test_db(name: &str) -> DB {
     let uri = "postgres://postgres:alkje2lkaj2e@db/postgres";
     let db = DB::connect(&uri, 50, None).await.unwrap();
 
@@ -14,10 +14,6 @@ pub async fn create_test_db(name: &str, migrate: bool) -> DB {
 
     let uri = format!("postgres://postgres:alkje2lkaj2e@db/db_test_{}", name);
     let db = DB::connect(&uri, 50, None).await.unwrap();
-
-    if migrate {
-        // db.migrate().await.unwrap();
-    }
 
     db
 }

@@ -9,5 +9,7 @@ pub use barrel;
 pub use barrel::Migration;
 pub use barrel::types;
 
+pub use dboom_entity_macro::*;
+
 #[cfg(test)]
 mod tests_macro;
