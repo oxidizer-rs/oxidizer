@@ -120,7 +120,7 @@ impl EntityBuilder {
         quote! {
              async fn create_migration() -> dboom::db::DBResult<dboom::Migration> {
                 let mut m = dboom::Migration::new();
-                m.create_table(#table_name, |t| {
+                m.create_table_if_not_exists(#table_name, |t| {
                     #(t
                         .add_column(
                             stringify!(#fields_all_names),

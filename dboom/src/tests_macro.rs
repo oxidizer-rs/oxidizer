@@ -319,3 +319,12 @@ async fn test_indexes() {
     };
     assert!(obj2.save(&db).await.is_ok());
 }
+
+#[tokio::test]
+async fn test_safe_migration() {
+    let db = super::db::test_utils::create_test_db("test_safe_migration").await;
+
+    let m = TestEntity::create_migration().await.unwrap();
+    db.migrate_table(&m).await.unwrap();
+    db.migrate_table(&m).await.unwrap();
+}
