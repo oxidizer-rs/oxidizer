@@ -118,7 +118,7 @@ impl EntityBuilder {
         }).collect();
 
         quote! {
-             async fn create_migration() -> dboom::db::DBResult<dboom::Migration> {
+             fn create_migration() -> dboom::db::DBResult<dboom::Migration> {
                 let mut m = dboom::Migration::new(#table_name);
                 m.raw.create_table(#table_name, |t| {
                     #(t

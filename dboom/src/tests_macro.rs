@@ -91,11 +91,18 @@ async fn test_entity_macro_clean() {
     };
 }
 
+mod migration_modules {
+    use crate::create_migration;
+    use super::*;
+
+    create_migration!(TestEntity);
+}
+
 #[tokio::test]
 async fn test_entity_macro_save() {
     let db = super::db::test_utils::create_test_db("test_entity_macro_save").await;
 
-    db.migrate_tables(&[TestEntity::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestEntity::create_migration().unwrap()]).await.unwrap();
 
     let mut obj = TestEntity::default();
     obj.name = "test".to_string();
@@ -111,7 +118,7 @@ async fn test_entity_macro_save() {
 async fn test_entity_macro_find() {
     let db = super::db::test_utils::create_test_db("test_entity_macro_find").await;
 
-    db.migrate_tables(&[TestEntity::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestEntity::create_migration().unwrap()]).await.unwrap();
 
     let mut obj = TestEntity::default();
     obj.name = "test".to_string();
@@ -126,7 +133,7 @@ async fn test_entity_macro_find() {
 async fn test_entity_macro_first() {
     let db = super::db::test_utils::create_test_db("test_entity_macro_first").await;
 
-    db.migrate_tables(&[TestEntity::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestEntity::create_migration().unwrap()]).await.unwrap();
 
     let mut obj = TestEntity::default();
     obj.name = "test".to_string();
@@ -145,7 +152,7 @@ async fn test_entity_macro_first() {
 async fn test_entity_macro_delete() {
     let db = super::db::test_utils::create_test_db("test_entity_macro_delete").await;
 
-    db.migrate_tables(&[TestEntity::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestEntity::create_migration().unwrap()]).await.unwrap();
 
     let mut obj = TestEntity::default();
     obj.name = "test".to_string();
@@ -171,8 +178,8 @@ async fn test_relation() {
     let db = super::db::test_utils::create_test_db("test_relation").await;
 
     db.migrate_tables(&[
-        TestEntity::create_migration().await.unwrap(),
-        TestRelation::create_migration().await.unwrap()]
+        TestEntity::create_migration().unwrap(),
+        TestRelation::create_migration().unwrap()]
     ).await.unwrap();
 
     let mut entity = TestEntity::default();
@@ -206,7 +213,7 @@ async fn test_relation() {
 async fn test_nullable() {
     let db = super::db::test_utils::create_test_db("test_nullable").await;
 
-    db.migrate_tables(&[TestNullable::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestNullable::create_migration().unwrap()]).await.unwrap();
 
     let mut obj = TestNullable::default();
     let creating = obj.save(&db).await.unwrap();
@@ -230,8 +237,8 @@ async fn test_relation_nullable() {
     let db = super::db::test_utils::create_test_db("test_relation_nullable").await;
 
     db.migrate_tables(&[
-        TestEntity::create_migration().await.unwrap(),
-        TestNullableRelation::create_migration().await.unwrap()
+        TestEntity::create_migration().unwrap(),
+        TestNullableRelation::create_migration().unwrap()
     ]).await.unwrap();
 
     let mut entity = TestEntity::default();
@@ -263,7 +270,7 @@ async fn test_custom_table_name() {
 async fn test_indexes() {
     let db = super::db::test_utils::create_test_db("test_indexes").await;
 
-    db.migrate_tables(&[TestCustomIndexes::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestCustomIndexes::create_migration().unwrap()]).await.unwrap();
 
     let mut obj = TestCustomIndexes{
         id: 0,
@@ -317,8 +324,8 @@ async fn test_indexes() {
 async fn test_safe_migrations() {
     let db = super::db::test_utils::create_test_db("test_safe_migrations").await;
 
-    db.migrate_tables(&[TestEntity::create_migration().await.unwrap()]).await.unwrap();
-    db.migrate_tables(&[TestEntity::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestEntity::create_migration().unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestEntity::create_migration().unwrap()]).await.unwrap();
 
 
     #[derive(Entity)]
@@ -342,14 +349,14 @@ async fn test_safe_migrations() {
 
 
     // Hash should match
-    db.migrate_tables(&[TestEntityChanged::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestEntityChanged::create_migration().unwrap()]).await.unwrap();
 }
 
 #[tokio::test]
 async fn test_migrations_changed() {
     let db = super::db::test_utils::create_test_db("test_migrations_changed").await;
 
-    db.migrate_tables(&[TestEntity::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestEntity::create_migration().unwrap()]).await.unwrap();
 
     #[derive(Entity)]
     #[entity(table_name="test_entity")]
@@ -373,5 +380,11 @@ async fn test_migrations_changed() {
     }
 
 
-    db.migrate_tables(&[TestEntityChanged::create_migration().await.unwrap()]).await.unwrap();
+    db.migrate_tables(&[TestEntityChanged::create_migration().unwrap()]).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_migrations_module() {
+    let migration = migration_modules::migration();
+    assert_eq!(TestEntity::create_migration().unwrap().make(), migration);
 }
