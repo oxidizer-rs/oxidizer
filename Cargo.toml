@@ -2,5 +2,6 @@
 
 members = [
   "dboom",
-  "dboom-entity-macro"
+  "dboom-entity-macro",
+  "dboom-migration"
 ]

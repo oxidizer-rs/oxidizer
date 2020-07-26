@@ -2,24 +2,25 @@ use proc_macro::TokenStream;
 use proc_macro2::{TokenStream as TokenStream2};
 use quote::{quote, quote_spanned};
 use syn::{Data, DataStruct, DeriveInput, Fields, Meta, Type, Ident, punctuated::{Punctuated}, Field, token::Comma};
-
-use super::field_extras::*;
-use super::attrs::{EntityAttr, IndexAttr};
 use inflector::cases::snakecase::to_snake_case;
 
-pub struct Props {
-    input: DeriveInput,
+use super::struct_like_helper::*;
+use super::field_extras::*;
+use super::attrs::{EntityAttr, IndexAttr};
+
+pub struct Props<A: StructLike> {
+    input: A,
     attrs: Option<EntityAttr>,
     indexes: Vec<IndexAttr>,
 }
 
-impl Props {
-    pub fn new(input: DeriveInput, attrs: Option<EntityAttr>, indexes: Vec<IndexAttr>) -> Self {
+impl<A: StructLike> Props<A> {
+    pub fn new(input: A, attrs: Option<EntityAttr>, indexes: Vec<IndexAttr>) -> Self {
         Props{input: input, attrs: attrs, indexes: indexes}
     }
 
     pub fn get_name(&self) -> &Ident {
-        &self.input.ident
+        self.input.get_ident()
     }
 
     pub fn get_table_name(&self) -> String {
@@ -35,10 +36,7 @@ impl Props {
     }
 
     pub fn get_fields_all(&self) -> &Punctuated<Field, Comma> {
-        match &self.input.data {
-            Data::Struct(DataStruct { fields: Fields::Named(fields), .. }) => &fields.named,
-            _ => panic!("expected a struct with named fields"),
-        }
+        self.input.get_fields_all()
     }
 
     pub fn get_fields_all_names(&self) -> Vec<&Option<Ident>> {

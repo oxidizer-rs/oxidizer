@@ -1,5 +1,6 @@
 use proc_macro::TokenStream;
 
+mod struct_like_helper;
 mod field_extras;
 mod entity_builder;
 mod props;

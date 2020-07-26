@@ -1,15 +1,16 @@
 use proc_macro::TokenStream;
 use proc_macro2::{TokenStream as TokenStream2};
 use quote::{quote, format_ident};
-use syn::{parse_macro_input, DeriveInput};
+use syn::{parse_macro_input, DeriveInput, ItemStruct};
 use inflector::cases::snakecase::to_snake_case;
 use darling::{FromMeta};
 
+use super::struct_like_helper::*;
 use super::props::*;
 use super::field_extras::*;
 use super::attrs::{EntityAttr, IndexAttr};
 
-pub struct EntityBuilder {
+pub struct EntityBuilder{
 }
 
 impl EntityBuilder {
@@ -17,7 +18,7 @@ impl EntityBuilder {
         EntityBuilder{}
     }
 
-    fn build_save_fn(&self, props: &Props) -> TokenStream2 {
+    fn build_save_fn<A: StructLike>(&self, props: &Props<A>) -> TokenStream2 {
         let table_name = props.get_table_name();
         let fields_plain_names = props.get_fields_plain_names();
 
@@ -83,7 +84,7 @@ impl EntityBuilder {
         }
     }
 
-    fn build_from_row_fn(&self, props: &Props) -> TokenStream2 {
+    fn build_from_row_fn<A: StructLike>(&self, props: &Props<A>) -> TokenStream2 {
         let fields_all_names = props.get_fields_all_names();
         let fields_all_types = props.get_fields_all_types();
         quote! {
@@ -98,7 +99,7 @@ impl EntityBuilder {
         }
     }
 
-    fn build_create_migration_fn(&self, props: &Props) -> TokenStream2 {
+    fn build_create_migration_fn<A: StructLike>(&self, props: &Props<A>) -> TokenStream2 {
         let table_name = props.get_table_name();
         let fields_all_names = props.get_fields_all_names();
         let fields_all_db_types = props.get_fields_all_db_types();
@@ -118,7 +119,7 @@ impl EntityBuilder {
         }).collect();
 
         quote! {
-             async fn create_migration() -> dboom::db::DBResult<dboom::Migration> {
+             fn create_migration() -> dboom::db::DBResult<dboom::Migration> {
                 let mut m = dboom::Migration::new(#table_name);
                 m.raw.create_table(#table_name, |t| {
                     #(t
@@ -138,7 +139,7 @@ impl EntityBuilder {
         }
     }
 
-    fn build_find_fn(&self, props: &Props) -> TokenStream2 {
+    fn build_find_fn<A: StructLike>(&self, props: &Props<A>) -> TokenStream2 {
         let name = props.get_name();
         let table_name = props.get_table_name();
         quote! {
@@ -151,7 +152,7 @@ impl EntityBuilder {
         }
     }
 
-    fn build_first_fn(&self, props: &Props) -> TokenStream2 {
+    fn build_first_fn<A: StructLike>(&self, props: &Props<A>) -> TokenStream2 {
         let name = props.get_name();
         let table_name = props.get_table_name();
         quote! {
@@ -167,7 +168,7 @@ impl EntityBuilder {
         }
     }
 
-    fn build_delete_fn(&self, props: &Props) -> TokenStream2 {
+    fn build_delete_fn<A: StructLike>(&self, props: &Props<A>) -> TokenStream2 {
         let primary_key_ident = &props.get_primary_key_field().unwrap().ident;
         let table_name = props.get_table_name();
         quote! {
@@ -189,7 +190,7 @@ impl EntityBuilder {
         }
     }
 
-    fn build_foreign_helpers(&self, props: &Props) -> Vec<TokenStream2> {
+    fn build_foreign_helpers<A: StructLike>(&self, props: &Props<A>) -> Vec<TokenStream2> {
         let name = props.get_name();
 
         let foreign_fields = props.get_fields_foreign();
@@ -254,14 +255,12 @@ impl EntityBuilder {
         }).collect()
     }
 
-    pub fn build(&self, item: TokenStream) -> TokenStream {
-        let input = parse_macro_input!(item as DeriveInput);
-
+    fn build_props<A: StructLike>(&self, input: A) -> Props<A> {
         let mut attrs: Option<EntityAttr> = None;
 
         let mut indexes: Vec<IndexAttr> = vec![];
 
-        for option in input.attrs.iter() {
+        for option in input.get_attrs().iter() {
             let option = option.parse_meta().unwrap();
             if let Ok(v) = EntityAttr::from_meta(&option) {
                 attrs = Some(v);
@@ -275,7 +274,23 @@ impl EntityBuilder {
         // eprintln!("{:#?}", input);
         // eprintln!("{:#?}", attrs);
 
-        let props = Props::new(input, attrs, indexes);
+        Props::new(input, attrs, indexes)
+    }
+
+    pub fn build_migration(&self, item: ItemStruct) -> TokenStream {
+        let props = self.build_props(item);
+
+        if let Some(ts) = props.check() {
+            return ts;
+        }
+
+        TokenStream::from(self.build_create_migration_fn(&props))
+    }
+
+    pub fn build(&self, item: TokenStream) -> TokenStream {
+        let input = parse_macro_input!(item as DeriveInput);
+
+        let props = self.build_props(input);
 
         if let Some(ts) = props.check() {
             return ts;
