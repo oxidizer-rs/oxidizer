@@ -388,3 +388,16 @@ async fn test_migrations_module() {
     let migration = migration_modules::migration();
     assert_eq!(TestEntity::create_migration().unwrap().make(), migration);
 }
+
+#[tokio::test]
+async fn test_migrations_module_fs() {
+    let db = super::db::test_utils::create_test_db("test_migrations_module_fs").await;
+
+    let runner = super::migrations::runner();
+    let report = db.migrate(runner).await.unwrap();
+    assert_eq!(1, report.applied_migrations().len());
+
+    let mut entity = TestEntity::default();
+    entity.name = "test".to_string();
+    entity.save(&db).await.unwrap();
+}

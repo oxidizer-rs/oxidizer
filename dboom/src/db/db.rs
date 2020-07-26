@@ -212,12 +212,13 @@ impl DB {
             Some(migration)
         }).collect();
 
-        let runner = refinery::Runner::new(&ref_migrations).set_abort_divergent(false);
+        let runner = refinery::Runner::new(&ref_migrations);
 
-        self.migrate(&runner).await
+        self.migrate(runner).await
     }
 
-    pub async fn migrate(&self, runner: &Runner) -> Result<Report, Error> {
+    pub async fn migrate(&self, runner: Runner) -> Result<Report, Error> {
+        let runner = runner.set_abort_divergent(false);
         match &self.pool {
             ConnectionPool::TLS(pool) => {
                 let mut client = pool.get().await.map_err(|err| Error::MobcError(err))?;
