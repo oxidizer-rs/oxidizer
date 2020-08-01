@@ -121,10 +121,10 @@ async fn test_entity_macro_clean() {
 }
 
 mod migration_modules {
-    use crate::create_migration;
+    use crate::create_migration_module;
     use super::*;
 
-    create_migration!(TestEntity);
+    create_migration_module!(TestEntity);
 }
 
 #[tokio::test]
