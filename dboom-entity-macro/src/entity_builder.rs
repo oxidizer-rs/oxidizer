@@ -8,6 +8,7 @@ use darling::{FromMeta};
 use super::props::*;
 use super::field_extras::*;
 use super::attrs::{EntityAttr, IndexAttr};
+use super::attrs::HasManyAttr;
 
 pub struct EntityBuilder {
 }
@@ -20,6 +21,11 @@ impl EntityBuilder {
     fn build_save_fn(&self, props: &Props) -> TokenStream2 {
         let table_name = props.get_table_name();
         let fields_plain_names = props.get_fields_plain_names();
+
+        let comma_after_default = match fields_plain_names.len() {
+            0 => "",
+            _ => ",",
+        };
 
         let numbered = props.get_fields_plain_numbered();
         let fields_plain_numbered: Vec<String> = numbered.iter().enumerate().map(|(i, v)| {
@@ -45,8 +51,11 @@ impl EntityBuilder {
                             "INSERT INTO ",
                             #table_name,
                             " (",
+                            stringify!(#primary_key_ident),
+                            #comma_after_default,
                             stringify!(#(#fields_plain_names),*),
-                            ") values(",
+                            ") values(DEFAULT",
+                            #comma_after_default,
                             #( #fields_plain_numbered ,)*
                             ") RETURNING ",
                             stringify!(#primary_key_ident),
@@ -254,12 +263,51 @@ impl EntityBuilder {
         }).collect()
     }
 
+    fn build_has_many_helpers(&self, props: &Props) -> Vec<TokenStream2> {
+        let name = props.get_name();
+
+        props.get_has_many_attrs().iter().map(|attr| {
+            let model_snake_cased = to_snake_case(&attr.model);
+
+            let get_ident = format_ident!("get_all_{}", model_snake_cased);
+
+            let trait_ident = format_ident!("__AccessorHasMany{}To{}", name, attr.model);
+
+            let model = match attr.through.as_ref() {
+                Some(m) => format_ident!("{}", m),
+                None => format_ident!("{}", attr.model),
+            };
+
+            let field = &attr.field;
+
+            let pk = &props.get_primary_key_field().unwrap().ident;
+
+            quote! {
+                #[dboom::async_trait]
+                pub trait #trait_ident {
+                    async fn #get_ident(&self, db: &dboom::db::DB) -> dboom::db::DBResult<Vec<#model>>;
+                }
+
+                #[dboom::async_trait]
+                impl #trait_ident for #name {
+                    async fn #get_ident(&self, db: &dboom::db::DB) -> dboom::db::DBResult<Vec<#model>> {
+                        let query = format!("{} = $1", #field);
+                        <#model>::find(db, &query, &[ &self.#pk ]).await
+                    }
+                }
+            }
+
+        }).collect()
+    }
+
     pub fn build(&self, item: TokenStream) -> TokenStream {
         let input = parse_macro_input!(item as DeriveInput);
 
         let mut attrs: Option<EntityAttr> = None;
 
         let mut indexes: Vec<IndexAttr> = vec![];
+
+        let mut has_many_attrs: Vec<HasManyAttr> = vec![];
 
         for option in input.attrs.iter() {
             let option = option.parse_meta().unwrap();
@@ -270,12 +318,16 @@ impl EntityBuilder {
             if let Ok(v) = IndexAttr::from_meta(&option) {
                 indexes.push(v);
             }
+
+            if let Ok(v) = HasManyAttr::from_meta(&option) {
+                has_many_attrs.push(v);
+            }
         }
 
         // eprintln!("{:#?}", input);
         // eprintln!("{:#?}", attrs);
 
-        let props = Props::new(input, attrs, indexes);
+        let props = Props::new(input, attrs, indexes, has_many_attrs);
 
         if let Some(ts) = props.check() {
             return ts;
@@ -292,6 +344,8 @@ impl EntityBuilder {
         let table_name = props.get_table_name();
 
         let foreign_helpers = self.build_foreign_helpers(&props);
+
+        let has_many_helpers = self.build_has_many_helpers(&props);
 
         let expanded = quote! {
             #[dboom::async_trait]
@@ -314,6 +368,8 @@ impl EntityBuilder {
             }
 
             #(#foreign_helpers)*
+
+            #(#has_many_helpers)*
         };
 
         // Hand the output tokens back to the compiler

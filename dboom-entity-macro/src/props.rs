@@ -2,20 +2,22 @@ use proc_macro::TokenStream;
 use proc_macro2::{TokenStream as TokenStream2};
 use quote::{quote, quote_spanned};
 use syn::{Data, DataStruct, DeriveInput, Fields, Meta, Type, Ident, punctuated::{Punctuated}, Field, token::Comma};
+use inflector::cases::snakecase::to_snake_case;
 
 use super::field_extras::*;
 use super::attrs::{EntityAttr, IndexAttr};
-use inflector::cases::snakecase::to_snake_case;
+use super::attrs::HasManyAttr;
 
 pub struct Props {
     input: DeriveInput,
     attrs: Option<EntityAttr>,
     indexes: Vec<IndexAttr>,
+    has_many_attrs: Vec<HasManyAttr>,
 }
 
 impl Props {
-    pub fn new(input: DeriveInput, attrs: Option<EntityAttr>, indexes: Vec<IndexAttr>) -> Self {
-        Props{input: input, attrs: attrs, indexes: indexes}
+    pub fn new(input: DeriveInput, attrs: Option<EntityAttr>, indexes: Vec<IndexAttr>, has_many_attrs: Vec<HasManyAttr>) -> Self {
+        Props{input: input, attrs: attrs, indexes: indexes, has_many_attrs: has_many_attrs}
     }
 
     pub fn get_name(&self) -> &Ident {
@@ -130,5 +132,9 @@ impl Props {
 
     pub fn get_indexes(&self) -> Vec<IndexAttr> {
         self.indexes.clone()
+    }
+
+    pub fn get_has_many_attrs(&self) -> Vec<HasManyAttr> {
+        self.has_many_attrs.clone()
     }
 }

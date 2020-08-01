@@ -76,6 +76,35 @@ struct TestCustomIndexes {
     email: String,
 }
 
+#[derive(Default, Entity)]
+pub struct TestReverseRelation {
+    #[primary_key]
+    id: i32,
+
+    #[relation(model="TestReverseRelationTarget", key="id")]
+    entity_id: i32,
+}
+
+#[derive(Default, Entity)]
+#[has_many(model="TestReverseRelation", field="entity_id")]
+#[has_many(model="TestEntity", field="entity_id", through="TestManyToMany")]
+pub struct TestReverseRelationTarget {
+    #[primary_key]
+    id: i32,
+}
+
+#[derive(Default, Entity)]
+pub struct TestManyToMany {
+    #[primary_key]
+    id: i32,
+
+    #[relation(model="TestReverseRelationTarget", key="id")]
+    target_id: i32,
+
+    #[relation(model="TestEntity", key="id")]
+    entity_id: i32,
+}
+
 #[tokio::test]
 async fn test_entity_macro_clean() {
     let _obj = TestEntity{
@@ -400,4 +429,67 @@ async fn test_migrations_module_fs() {
     let mut entity = TestEntity::default();
     entity.name = "test".to_string();
     entity.save(&db).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_relation_has_many() {
+    let db = super::db::test_utils::create_test_db("test_relation_has_many").await;
+
+    db.migrate_tables(&[
+        TestReverseRelationTarget::create_migration().unwrap(),
+        TestReverseRelation::create_migration().unwrap()]
+    ).await.unwrap();
+
+    let mut target = TestReverseRelationTarget::default();
+    let creating = target.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let mut entity = TestReverseRelation::default();
+    entity.entity_id = target.id;
+    let creating = entity.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let mut entity2 = TestReverseRelation::default();
+    entity2.entity_id = target.id;
+    let creating = entity2.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+
+    let loaded = target.get_all_test_reverse_relation(&db).await.unwrap();
+    assert_eq!(2, loaded.len());
+
+    assert_eq!(entity.id, loaded[0].id);
+    assert_eq!(entity2.id, loaded[1].id);
+}
+
+#[tokio::test]
+async fn test_many_to_many() {
+    let db = super::db::test_utils::create_test_db("test_many_to_many").await;
+
+    db.migrate_tables(&[
+        TestEntity::create_migration().unwrap(),
+        TestReverseRelationTarget::create_migration().unwrap(),
+        TestManyToMany::create_migration().unwrap()
+        ]
+    ).await.unwrap();
+
+    let mut target = TestReverseRelationTarget::default();
+    let creating = target.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let mut entity = TestEntity::default();
+    let creating = entity.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let mut m2m = TestManyToMany::default();
+    m2m.entity_id = entity.id;
+    m2m.target_id = target.id;
+    let creating = m2m.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+
+    let loaded_entity = target.get_all_test_entity(&db).await.unwrap();
+    assert_eq!(1, loaded_entity.len());
+
+    assert_eq!(entity.id, loaded_entity[0].entity_id);
 }
