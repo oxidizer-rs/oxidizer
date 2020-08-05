@@ -41,7 +41,7 @@ impl EntityBuilder {
         let primary_key_type = &primary_key.ty;
 
         quote! {
-            async fn save(&mut self, db: &dboom::db::DB) -> dboom::db::DBResult<bool> {
+            async fn save(&mut self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<bool> {
                 let mut creating = false;
                 let primary_key_default: #primary_key_type = Default::default();
                 let _result = match self.#primary_key_ident {
@@ -65,7 +65,7 @@ impl EntityBuilder {
                             query,
                             &[#( &self.#fields_plain_names),*]
                         ).await?;
-                        let first_row = rows.first().ok_or(dboom::db::Error::Other)?;
+                        let first_row = rows.first().ok_or(oxidizer::db::Error::Other)?;
                         self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
                         1
                     },
@@ -96,7 +96,7 @@ impl EntityBuilder {
         let fields_all_names = props.get_fields_all_names();
         let fields_all_types = props.get_fields_all_types();
         quote! {
-            fn from_row(row: &dboom::tokio_postgres::Row) -> Self {
+            fn from_row(row: &oxidizer::tokio_postgres::Row) -> Self {
                 let mut obj: Self = Self{
                     #(
                         #fields_all_names: row.get::<&str, #fields_all_types>(concat!(stringify!(#fields_all_names))),
@@ -121,14 +121,14 @@ impl EntityBuilder {
             quote! {
                 t.add_index(
                     #index_name,
-                    dboom::types::index(vec![ #(#columns),* ]).unique(#unique)
+                    oxidizer::types::index(vec![ #(#columns),* ]).unique(#unique)
                 );
             }
         }).collect();
 
         quote! {
-             fn create_migration() -> dboom::db::DBResult<dboom::Migration> {
-                let mut m = dboom::Migration::new(#table_name);
+             fn create_migration() -> oxidizer::db::DBResult<oxidizer::Migration> {
+                let mut m = oxidizer::Migration::new(#table_name);
                 m.raw.create_table(#table_name, |t| {
                     #(t
                         .add_column(
@@ -151,7 +151,7 @@ impl EntityBuilder {
         let name = props.get_name();
         let table_name = props.get_table_name();
         quote! {
-            async fn find(db: &dboom::db::DB, condition: &str, params: &'_ [&'_ (dyn dboom::db_types::ToSql + Sync)]) -> dboom::db::DBResult<Vec<#name>> {
+            async fn find(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<Vec<#name>> {
                 let query_str = format!("SELECT * FROM {} WHERE {}", #table_name, condition);
                 let rows = db.query(&query_str, params).await?;
                 let results: Vec<#name> = rows.iter().map(|row| Self::from_row(row)).collect();
@@ -164,7 +164,7 @@ impl EntityBuilder {
         let name = props.get_name();
         let table_name = props.get_table_name();
         quote! {
-            async fn first(db: &dboom::db::DB, condition: &str, params: &'_ [&'_ (dyn dboom::db_types::ToSql + Sync)]) -> dboom::db::DBResult<std::option::Option<#name>> {
+            async fn first(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<std::option::Option<#name>> {
                 let query_str = format!("SELECT * FROM {} WHERE {} LIMIT 1", #table_name, condition);
                 let rows = db.query(&query_str, params).await?;
                 let mut results: Vec<#name> = rows.iter().map(|row| Self::from_row(row)).collect();
@@ -180,7 +180,7 @@ impl EntityBuilder {
         let primary_key_ident = &props.get_primary_key_field().unwrap().ident;
         let table_name = props.get_table_name();
         quote! {
-            async fn delete(&mut self, db: &dboom::db::DB) -> dboom::db::DBResult<bool> {
+            async fn delete(&mut self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<bool> {
                 if self.#primary_key_ident == Default::default() {
                     return Ok(false);
                 }
@@ -226,32 +226,32 @@ impl EntityBuilder {
             };
 
             quote! {
-                #[dboom::async_trait]
+                #[oxidizer::async_trait]
                 pub trait #trait_ident {
-                    async fn #get_ident(&self, db: &dboom::db::DB) -> dboom::db::DBResult<#model>;
-                    async fn #set_ident(&mut self, db: &dboom::db::DB, v: &#model) -> dboom::db::DBResult<()>;
+                    async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<#model>;
+                    async fn #set_ident(&mut self, db: &oxidizer::db::DB, v: &#model) -> oxidizer::db::DBResult<()>;
                 }
 
-                #[dboom::async_trait]
+                #[oxidizer::async_trait]
                 impl #trait_ident for #name {
-                    async fn #get_ident(&self, db: &dboom::db::DB) -> dboom::db::DBResult<#model> {
+                    async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<#model> {
                         if self.#local_key == Default::default() {
-                            return Err(dboom::db::Error::DoesNotExist);
+                            return Err(oxidizer::db::Error::DoesNotExist);
                         }
 
                         let table_name = <#model>::get_table_name();
                         let query = format!("select * from {} where {} = $1 limit 1", &table_name, stringify!(#key));
                         let results = db.query(&query, &[&self.#local_key]).await?;
                         if results.len() == 0 {
-                            return Err(dboom::db::Error::DoesNotExist);
+                            return Err(oxidizer::db::Error::DoesNotExist);
                         }
 
                         Ok(#model::from_row(&results[0]))
                     }
 
-                    async fn #set_ident(&mut self, db: &dboom::db::DB, v: &#model) -> dboom::db::DBResult<()> {
+                    async fn #set_ident(&mut self, db: &oxidizer::db::DB, v: &#model) -> oxidizer::db::DBResult<()> {
                         if v.#key == Default::default() {
-                            return Err(dboom::db::Error::ReferencedModelIsNotInDB);
+                            return Err(oxidizer::db::Error::ReferencedModelIsNotInDB);
                         }
 
                         #local_key_set
@@ -283,14 +283,14 @@ impl EntityBuilder {
             let pk = &props.get_primary_key_field().unwrap().ident;
 
             quote! {
-                #[dboom::async_trait]
+                #[oxidizer::async_trait]
                 pub trait #trait_ident {
-                    async fn #get_ident(&self, db: &dboom::db::DB) -> dboom::db::DBResult<Vec<#model>>;
+                    async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<Vec<#model>>;
                 }
 
-                #[dboom::async_trait]
+                #[oxidizer::async_trait]
                 impl #trait_ident for #name {
-                    async fn #get_ident(&self, db: &dboom::db::DB) -> dboom::db::DBResult<Vec<#model>> {
+                    async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<Vec<#model>> {
                         let query = format!("{} = $1", #field);
                         <#model>::find(db, &query, &[ &self.#pk ]).await
                     }
@@ -348,8 +348,8 @@ impl EntityBuilder {
         let has_many_helpers = self.build_has_many_helpers(&props);
 
         let expanded = quote! {
-            #[dboom::async_trait]
-            impl dboom::entity::Entity for #name {
+            #[oxidizer::async_trait]
+            impl oxidizer::entity::Entity for #name {
                 #save_fn
 
                 #delete_fn

@@ -2,9 +2,9 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.117.1/containers/docker-in-docker-compose
 // If you want to run as a non-root user in the container, see .devcontainer/docker-compose.yml.
 {
-	"name": "dboom",
+	"name": "oxidizer",
 	"dockerComposeFile": "docker-compose.yml",
-	"service": "dboom",
+	"service": "oxidizer",
 	"workspaceFolder": "/workspace",
 
 	"runArgs": [
@@ -29,7 +29,7 @@
 	],
 
 	// Uncomment the next line if you want start specific services in your Docker Compose config.
-	"runServices": ["db", "dboom"],
+	"runServices": ["db", "oxidizer"],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "docker --version",

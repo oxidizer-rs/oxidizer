@@ -71,7 +71,7 @@ impl FieldExtras for Field {
     fn get_db_type(&self) -> TokenStream2 {
         if self.is_primary_key() {
             return quote!{
-                dboom::types::primary()
+                oxidizer::types::primary()
             }
         }
 
@@ -83,7 +83,7 @@ impl FieldExtras for Field {
             let table_name_acessor = quote!{ <#model_ident>::get_table_name() };
 
             return quote! {
-                dboom::types::foreign(#table_name_acessor, #key)
+                oxidizer::types::foreign(#table_name_acessor, #key)
             }
         }
 
@@ -94,70 +94,70 @@ impl FieldExtras for Field {
 
         match segments.first().unwrap() {
             PathSegment{ident, ..} if ident.to_string() == "String" => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
             segment if is_typed_with(segment, vec!["Option", "String"]) => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
 
             PathSegment{ident, ..} if ident.to_string() == "i8" => {
-                quote! { dboom::types::custom("char") }
+                quote! { oxidizer::types::custom("char") }
             },
             segment if is_typed_with(segment, vec!["Option", "i8"]) => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
 
             PathSegment{ident, ..} if ident.to_string() == "i16" => {
-                quote! { dboom::types::custom("SMALLINT") }
+                quote! { oxidizer::types::custom("SMALLINT") }
             },
             segment if is_typed_with(segment, vec!["Option", "i16"]) => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
 
             PathSegment{ident, ..} if ident.to_string() == "i32" => {
-                quote! { dboom::types::integer() }
+                quote! { oxidizer::types::integer() }
             },
             segment if is_typed_with(segment, vec!["Option", "i32"]) => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
 
             PathSegment{ident, ..} if ident.to_string() == "u32" => {
-                quote! { dboom::types::custom("OID") }
+                quote! { oxidizer::types::custom("OID") }
             },
             segment if is_typed_with(segment, vec!["Option", "u32"]) => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
 
             PathSegment{ident, ..} if ident.to_string() == "i64" => {
-                quote! { dboom::types::custom("BIGINT") }
+                quote! { oxidizer::types::custom("BIGINT") }
             },
             segment if is_typed_with(segment, vec!["Option", "i64"]) => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
 
             PathSegment{ident, ..} if ident.to_string() == "f32" => {
-                quote! { dboom::types::custom("REAL") }
+                quote! { oxidizer::types::custom("REAL") }
             },
             segment if is_typed_with(segment, vec!["Option", "f32"]) => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
 
             PathSegment{ident, ..} if ident.to_string() == "f64" => {
-                quote! { dboom::types::custom("DOUBLE PRECISION") }
+                quote! { oxidizer::types::custom("DOUBLE PRECISION") }
             },
             segment if is_typed_with(segment, vec!["Option", "f64"]) => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
 
             PathSegment{ident, ..} if ident.to_string() == "bool" => {
-                quote! { dboom::types::boolean() }
+                quote! { oxidizer::types::boolean() }
             },
             segment if is_typed_with(segment, vec!["Option", "bool"]) => {
-                quote! { dboom::types::text() }
+                quote! { oxidizer::types::text() }
             },
 
             segment if is_chrono_option(segment) => {
-                quote! { dboom::types::custom("timestamp with time zone") }
+                quote! { oxidizer::types::custom("timestamp with time zone") }
             },
             _ => unimplemented!(),
         }

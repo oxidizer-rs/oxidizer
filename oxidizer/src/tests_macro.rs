@@ -1,6 +1,6 @@
-use dboom_entity_macro::Entity;
-use dboom::entity::Entity;
-use crate as dboom;
+use oxidizer_entity_macro::Entity;
+use oxidizer::entity::Entity;
+use crate as oxidizer;
 
 use chrono::{DateTime, Utc};
 

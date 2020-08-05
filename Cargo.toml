@@ -1,6 +1,6 @@
 [workspace]
 
 members = [
-  "dboom",
-  "dboom-entity-macro"
+  "oxidizer",
+  "oxidizer-entity-macro"
 ]
