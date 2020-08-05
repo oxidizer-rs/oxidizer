@@ -12,7 +12,7 @@ proc-macro = true
 [dependencies]
 quote = "*"
 syn = { version = "*", features = ["full", "extra-traits"] }
-proc-macro2 = "1.0.18"
+proc-macro2 = "1.0.19"
 darling = "0.10.2"
 async-trait = "0.1.31"
 Inflector = "0.11.4"
