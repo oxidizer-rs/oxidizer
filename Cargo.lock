@@ -574,9 +574,9 @@ dependencies = [
 
 [[package]]
 name = "mobc"
-version = "0.5.11"
+version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f38d66ced8947f4285223223f91c707cef47bce0a4118b7c0355cea420cc01c6"
+checksum = "d6813d7da9f2399927e4f83d741165869376b5b3b7d9a09945713b48ce4241cf"
 dependencies = [
  "async-trait",
  "futures",
