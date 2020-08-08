@@ -1,0 +1,9 @@
+on: push
+name: rustfmt check
+jobs:
+  fmt_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - run: rustup component add rustfmt
+      - run: cargo fmt -- --check

@@ -235,7 +235,6 @@
 //!
 //!
 
-
 pub mod db;
 pub use db::*;
 
@@ -249,7 +248,7 @@ pub use async_trait::async_trait;
 pub use tokio_postgres;
 pub use tokio_postgres::types as db_types;
 
-pub use barrel::{types};
+pub use barrel::types;
 pub use refinery::include_migration_mods;
 
 pub use oxidizer_entity_macro::*;

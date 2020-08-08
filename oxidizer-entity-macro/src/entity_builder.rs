@@ -1,21 +1,20 @@
-use proc_macro::TokenStream;
-use proc_macro2::{TokenStream as TokenStream2};
-use quote::{quote, format_ident};
-use syn::{parse_macro_input, DeriveInput};
+use darling::FromMeta;
 use inflector::cases::snakecase::to_snake_case;
-use darling::{FromMeta};
+use proc_macro::TokenStream;
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{format_ident, quote};
+use syn::{parse_macro_input, DeriveInput};
 
-use super::props::*;
-use super::field_extras::*;
-use super::attrs::{EntityAttr, IndexAttr};
 use super::attrs::HasManyAttr;
+use super::attrs::{EntityAttr, IndexAttr};
+use super::field_extras::*;
+use super::props::*;
 
-pub struct EntityBuilder {
-}
+pub struct EntityBuilder {}
 
 impl EntityBuilder {
     pub fn new() -> Self {
-        EntityBuilder{}
+        EntityBuilder {}
     }
 
     fn build_save_fn(&self, props: &Props) -> TokenStream2 {
@@ -28,12 +27,16 @@ impl EntityBuilder {
         };
 
         let numbered = props.get_fields_plain_numbered();
-        let fields_plain_numbered: Vec<String> = numbered.iter().enumerate().map(|(i, v)| {
-            if i == numbered.len() - 1 {
-                return v.to_string();
-            }
-            return format!("{},", v);
-        }).collect();
+        let fields_plain_numbered: Vec<String> = numbered
+            .iter()
+            .enumerate()
+            .map(|(i, v)| {
+                if i == numbered.len() - 1 {
+                    return v.to_string();
+                }
+                return format!("{},", v);
+            })
+            .collect();
         let fields_plain_numbered_next_index = props.get_fields_plain_numbered_next_index();
 
         let primary_key = props.get_primary_key_field().unwrap();
@@ -114,17 +117,21 @@ impl EntityBuilder {
         let fields_all_nullable = props.get_fields_all_nullable();
         let fields_all_indexed = props.get_fields_all_indexed();
 
-        let indexes: Vec<TokenStream2> = props.get_indexes().iter().map(|index| {
-            let index_name = &index.name;
-            let columns: Vec<&str> = index.columns.split(",").map(|c| c.trim()).collect();
-            let unique = index.unique;
-            quote! {
-                t.add_index(
-                    #index_name,
-                    oxidizer::types::index(vec![ #(#columns),* ]).unique(#unique)
-                );
-            }
-        }).collect();
+        let indexes: Vec<TokenStream2> = props
+            .get_indexes()
+            .iter()
+            .map(|index| {
+                let index_name = &index.name;
+                let columns: Vec<&str> = index.columns.split(",").map(|c| c.trim()).collect();
+                let unique = index.unique;
+                quote! {
+                    t.add_index(
+                        #index_name,
+                        oxidizer::types::index(vec![ #(#columns),* ]).unique(#unique)
+                    );
+                }
+            })
+            .collect();
 
         quote! {
              fn create_migration() -> oxidizer::db::DBResult<oxidizer::migration::Migration> {

@@ -1,6 +1,13 @@
-use syn::{Path, Type, TypePath, PathSegment, PathArguments, AngleBracketedGenericArguments, GenericArgument};
+use syn::{
+    AngleBracketedGenericArguments, GenericArgument, Path, PathArguments, PathSegment, Type,
+    TypePath,
+};
 
-pub fn iterate_angle_bracketed(ab: &AngleBracketedGenericArguments, expected: &Vec<String>, index: usize) -> bool {
+pub fn iterate_angle_bracketed(
+    ab: &AngleBracketedGenericArguments,
+    expected: &Vec<String>,
+    index: usize,
+) -> bool {
     let index = index;
 
     if expected.len() == index {
@@ -37,9 +44,7 @@ pub fn iterate_path_arguments(seg: &PathSegment, expected: &Vec<String>, index: 
     }
 
     match &seg.arguments {
-        PathArguments::AngleBracketed(angle) => {
-            iterate_angle_bracketed(angle, expected, index)
-        },
+        PathArguments::AngleBracketed(angle) => iterate_angle_bracketed(angle, expected, index),
         PathArguments::Parenthesized(_paren) => unimplemented!(),
         PathArguments::None => expected.len() == index,
     }
@@ -62,7 +67,6 @@ pub fn iterate_path_segments(p: &Path, expected: &Vec<String>, index: usize) -> 
 }
 
 pub fn check_type_order(p: &TypePath, expected: &Vec<String>, index: usize) -> bool {
-
     let mut index = index;
 
     if expected.len() == index {

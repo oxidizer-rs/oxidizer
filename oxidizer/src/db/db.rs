@@ -3,18 +3,18 @@ use mobc::Manager;
 use mobc::Pool;
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
+use refinery::{Report, Runner};
 use std::str::FromStr;
-use refinery::{Runner, Report};
 
 use super::super::migration::Migration;
 
+use barrel::backend::Pg;
 use tokio_postgres::{
+    row::Row,
     tls::{MakeTlsConnect, TlsConnect},
     types::ToSql,
-    row::Row,
     Client, Config, NoTls, Socket,
 };
-use barrel::{backend::Pg};
 
 pub struct ConnectionManager<Tls> {
     config: Config,
@@ -51,7 +51,6 @@ where
     }
 }
 
-
 #[derive(Debug)]
 pub enum Error {
     PostgresError(tokio_postgres::Error),
@@ -78,7 +77,7 @@ pub struct DB {
 
 impl DB {
     pub async fn connect(uri: &str, max_open: u64, ca_file: Option<&str>) -> Result<Self, Error> {
-            if let Some(ca_file) = ca_file {
+        if let Some(ca_file) = ca_file {
             let mut builder =
                 SslConnector::builder(SslMethod::tls()).map_err(|err| Error::OpensslError(err))?;
 
@@ -98,22 +97,27 @@ impl DB {
             let config =
                 tokio_postgres::Config::from_str(uri).map_err(|err| Error::PostgresError(err))?;
 
-                let manager = ConnectionManager::new(config, NoTls);
+            let manager = ConnectionManager::new(config, NoTls);
 
-                Ok(DB {
-                    pool: ConnectionPool::NoTLS(Pool::builder().max_open(max_open).build(manager)),
-                })
-
-            }
-
-
+            Ok(DB {
+                pool: ConnectionPool::NoTLS(Pool::builder().max_open(max_open).build(manager)),
+            })
         }
+    }
 
-    pub async fn create(&self, query: &str, params: &'_ [&'_ (dyn ToSql + Sync)]) -> Result<u64, Error> {
+    pub async fn create(
+        &self,
+        query: &str,
+        params: &'_ [&'_ (dyn ToSql + Sync)],
+    ) -> Result<u64, Error> {
         self.execute(query, params).await
     }
 
-    pub async fn execute(&self, query: &str, params: &'_ [&'_ (dyn ToSql + Sync)]) -> Result<u64, Error> {
+    pub async fn execute(
+        &self,
+        query: &str,
+        params: &'_ [&'_ (dyn ToSql + Sync)],
+    ) -> Result<u64, Error> {
         match &self.pool {
             ConnectionPool::TLS(pool) => {
                 let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
@@ -127,8 +131,7 @@ impl DB {
                     .execute(&insert, params)
                     .await
                     .map_err(|err| Error::PostgresError(err))
-
-            },
+            }
             ConnectionPool::NoTLS(pool) => {
                 let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
 
@@ -145,7 +148,11 @@ impl DB {
         }
     }
 
-    pub async fn query(&self, query: &str, params: &'_ [&'_ (dyn ToSql + Sync)]) -> Result<Vec<Row>, Error> {
+    pub async fn query(
+        &self,
+        query: &str,
+        params: &'_ [&'_ (dyn ToSql + Sync)],
+    ) -> Result<Vec<Row>, Error> {
         match &self.pool {
             ConnectionPool::TLS(pool) => {
                 let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
@@ -159,8 +166,7 @@ impl DB {
                     .query(&insert, params)
                     .await
                     .map_err(|err| Error::PostgresError(err))
-
-            },
+            }
             ConnectionPool::NoTLS(pool) => {
                 let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
 
@@ -178,15 +184,20 @@ impl DB {
     }
 
     pub async fn migrate_tables(&self, ms: &[Migration]) -> Result<Report, Error> {
-        let ref_migrations: Vec<refinery::Migration> = ms.as_ref().iter().enumerate().filter_map(|(i, m)| {
-            let sql = m.raw.make::<Pg>();
+        let ref_migrations: Vec<refinery::Migration> = ms
+            .as_ref()
+            .iter()
+            .enumerate()
+            .filter_map(|(i, m)| {
+                let sql = m.raw.make::<Pg>();
 
-            let name = format!("V{}__{}.rs", i, m.name);
+                let name = format!("V{}__{}.rs", i, m.name);
 
-            let migration = refinery::Migration::unapplied(&name, &sql).unwrap();
+                let migration = refinery::Migration::unapplied(&name, &sql).unwrap();
 
-            Some(migration)
-        }).collect();
+                Some(migration)
+            })
+            .collect();
 
         let runner = refinery::Runner::new(&ref_migrations);
 
@@ -198,13 +209,18 @@ impl DB {
         match &self.pool {
             ConnectionPool::TLS(pool) => {
                 let mut client = pool.get().await.map_err(|err| Error::MobcError(err))?;
-                Ok(runner.run_async(&mut *client).await.map_err(|err| Error::RefineryError(err))?)
-            },
+                Ok(runner
+                    .run_async(&mut *client)
+                    .await
+                    .map_err(|err| Error::RefineryError(err))?)
+            }
             ConnectionPool::NoTLS(pool) => {
                 let mut client = pool.get().await.map_err(|err| Error::MobcError(err))?;
-                Ok(runner.run_async(&mut *client).await.map_err(|err| Error::RefineryError(err))?)
+                Ok(runner
+                    .run_async(&mut *client)
+                    .await
+                    .map_err(|err| Error::RefineryError(err))?)
             }
         }
     }
-
 }
