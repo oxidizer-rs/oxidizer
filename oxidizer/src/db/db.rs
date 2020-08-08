@@ -145,30 +145,6 @@ impl DB {
         }
     }
 
-    async fn execute_raw(&self, sql: &str) -> Result<(), Error> {
-        let _res = match &self.pool {
-            ConnectionPool::TLS(pool) => {
-                let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
-
-                client
-                    .simple_query(sql)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))
-
-            },
-            ConnectionPool::NoTLS(pool) => {
-                let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
-
-                client
-                    .simple_query(&sql)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))
-            }
-        }?;
-
-        Ok(())
-    }
-
     pub async fn query(&self, query: &str, params: &'_ [&'_ (dyn ToSql + Sync)]) -> Result<Vec<Row>, Error> {
         match &self.pool {
             ConnectionPool::TLS(pool) => {

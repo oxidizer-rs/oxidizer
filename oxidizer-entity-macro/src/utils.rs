@@ -1,7 +1,7 @@
 use syn::{Path, Type, TypePath, PathSegment, PathArguments, AngleBracketedGenericArguments, GenericArgument};
 
 pub fn iterate_angle_bracketed(ab: &AngleBracketedGenericArguments, expected: &Vec<String>, index: usize) -> bool {
-    let mut index = index;
+    let index = index;
 
     if expected.len() == index {
         return true;
@@ -46,7 +46,7 @@ pub fn iterate_path_arguments(seg: &PathSegment, expected: &Vec<String>, index: 
 }
 
 pub fn iterate_path_segments(p: &Path, expected: &Vec<String>, index: usize) -> bool {
-    let mut index = index;
+    let index = index;
 
     if expected.len() == index {
         return true;

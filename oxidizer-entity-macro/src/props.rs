@@ -86,21 +86,6 @@ impl Props {
         }).map(|field| &field.ident).collect()
     }
 
-    pub fn get_fields_plain_types(&self) -> Vec<&Type> {
-        self.get_fields_all().iter().filter(|field| {
-            for option in (&field.attrs).into_iter() {
-                let option = option.parse_meta().unwrap();
-                match option {
-                    Meta::Path(path) if path.get_ident().unwrap().to_string() == "primary_key" => {
-                        return false;
-                    },
-                    _ => {},
-                }
-            }
-            return true;
-        }).map(|field| &field.ty).collect()
-    }
-
     pub fn get_fields_plain_numbered(&self) -> Vec<String> {
         self.get_fields_plain_names().iter().enumerate().map(|(i, _)| "$".to_string() + &(i+1).to_string()).collect()
     }
