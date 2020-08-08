@@ -74,7 +74,7 @@
 //! ```
 //!
 //! ### #[indexed]
-//! Created an index on the specified field
+//! Make the specified field indexed in the db
 //!
 //! ```
 //! use oxidizer::*;
