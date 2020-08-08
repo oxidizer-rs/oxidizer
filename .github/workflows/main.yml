@@ -1,0 +1,50 @@
+name: Main
+
+on:
+  schedule:
+    - cron: '0 4 * * 6' # run build Sat at 4 pst
+  push:
+    branches:
+      - main
+
+env:
+  CACHE_VERSION: 1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/cargo_registry
+          key: ${{ runner.os }}-amd64-cargo-registry-oxidizer-${{ hashFiles('**/Cargo.lock') }}-${{env.CACHE_VERSION}}
+          restore-keys: |
+            ${{ runner.os }}-amd64-cargo-registry-oxidizer-
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/cargo_index
+          key: ${{ runner.os }}-amd64-cargo-index-oxidizer-${{ hashFiles('**/Cargo.lock') }}-${{env.CACHE_VERSION}}
+          restore-keys: |
+            ${{ runner.os }}-amd64-cargo-index-oxidizer-
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-amd64-cargo-build-target-oxidizer-${{ hashFiles('**/Cargo.lock') }}-${{env.CACHE_VERSION}}
+          restore-keys: |
+            ${{ runner.os }}-amd64-cargo-build-target-oxidizer-
+
+      - name: Set up environment
+        run: docker-compose -p oxidizer -f .devcontainer/docker-compose.yml -f .devcontainer/docker-compose-ci.yml up -d
+
+      - name: Run unit tests
+        run: docker exec oxidizer_oxidizer_1  bash -c "cd /workspace/oxidizer && cargo test"
+
+      - name: Fix permissions
+        run: sudo chown -R $USER:$USER . && sudo chown -vR $USER:$USER ~/cargo_registry && sudo chown -vR $USER:$USER ~/cargo_index
+
