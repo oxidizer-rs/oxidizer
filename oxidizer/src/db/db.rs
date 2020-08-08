@@ -6,7 +6,7 @@ use postgres_openssl::MakeTlsConnector;
 use std::str::FromStr;
 use refinery::{Runner, Report};
 
-use super::super::Migration;
+use super::super::migration::Migration;
 
 use tokio_postgres::{
     tls::{MakeTlsConnect, TlsConnect},

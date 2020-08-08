@@ -1,12 +1,13 @@
 use tokio_postgres::Row;
 
-use super::Migration;
+use super::migration::Migration;
 use super::async_trait;
 use super::db::{DBResult, DB};
 use super::db_types::ToSql;
 
+/// Trait implemented by all derived Entitities
 #[async_trait]
-pub trait Entity: Sized {
+pub trait IEntity: Sized {
     async fn save(&mut self, db: &DB) -> DBResult<bool>;
     async fn delete(&mut self, db: &DB) -> DBResult<bool>;
 

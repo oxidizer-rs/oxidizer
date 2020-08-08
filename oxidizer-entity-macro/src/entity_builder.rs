@@ -127,8 +127,8 @@ impl EntityBuilder {
         }).collect();
 
         quote! {
-             fn create_migration() -> oxidizer::db::DBResult<oxidizer::Migration> {
-                let mut m = oxidizer::Migration::new(#table_name);
+             fn create_migration() -> oxidizer::db::DBResult<oxidizer::migration::Migration> {
+                let mut m = oxidizer::migration::Migration::new(#table_name);
                 m.raw.create_table(#table_name, |t| {
                     #(t
                         .add_column(
@@ -349,7 +349,7 @@ impl EntityBuilder {
 
         let expanded = quote! {
             #[oxidizer::async_trait]
-            impl oxidizer::entity::Entity for #name {
+            impl oxidizer::entity::IEntity for #name {
                 #save_fn
 
                 #delete_fn

@@ -1,5 +1,5 @@
 use oxidizer_entity_macro::Entity;
-use oxidizer::entity::Entity;
+use oxidizer::entity::IEntity;
 use crate as oxidizer;
 
 use chrono::{DateTime, Utc};

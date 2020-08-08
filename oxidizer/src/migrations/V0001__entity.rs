@@ -1,6 +1,6 @@
 
 use crate::create_migration_module;
-use crate::entity::Entity;
+use crate::entity::IEntity;
 
 use crate::tests_macro::TestEntity;
 

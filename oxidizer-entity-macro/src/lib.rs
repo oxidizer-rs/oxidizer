@@ -7,7 +7,7 @@ mod utils;
 mod attrs;
 
 /// Entity derive macro
-#[proc_macro_derive(Entity, attributes(primary_key, indexed, relation, entity, index, has_many, many_to_many))]
+#[proc_macro_derive(Entity, attributes(primary_key, indexed, relation, entity, index, has_many))]
 pub fn entity_macro(item: TokenStream) -> TokenStream {
     entity_builder::EntityBuilder::new().build(item)
 }

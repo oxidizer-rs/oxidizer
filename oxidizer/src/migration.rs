@@ -5,7 +5,7 @@ use barrel::{backend::Pg, Migration as RawMigration};
 pub struct Migration {
     pub name: String,
 
-    pub(crate) raw: RawMigration,
+    pub raw: RawMigration,
 }
 
 impl Migration {
