@@ -14,6 +14,46 @@
 //!     async fn first(db: &DB, query: &str, params: &'_ [&'_ (dyn ToSql + Sync)]) -> DBResult<Option<Self>>;
 //! }
 //! ```
+//! ```
+//! use oxidizer::*;
+//! use chrono::{DateTime, Utc};
+//!
+//! #[derive(Entity)]
+//! #[derive(Default)]
+//! pub struct MyEntity {
+//!     #[primary_key]
+//!     id: i32,
+//!
+//!     name: String,
+//!
+//!     #[indexed]
+//!     integer: i32,
+//!     integer64: i64,
+//!
+//!     float: f32,
+//!     double: f64,
+//!
+//!     boolean: bool,
+//!
+//!     datetime: Option<DateTime<Utc>>,
+//! }
+//!
+//! #[tokio::test]
+//! async fn test_my_entity() {
+//!     let uri = "postgres://postgres:alkje2lkaj2e@db/postgres";
+//!     let max_open = 50; // mobc
+//!     let ca_file: Option<&str> = None;
+//!     let db = DB::connect(&uri, max_open, ca_file).await.unwrap();
+//!
+//!     db.migrate_tables(&[MyEntity::create_migration().unwrap()]).await.unwrap();
+//!
+//!     let mut entity = MyEntity::default();
+//!     let creating = entity.save(&db).await.unwrap();
+//!     assert_eq!(creating, true);
+//! }
+//!
+//! ```
+//!
 //!
 //! ## Attributes
 //!
