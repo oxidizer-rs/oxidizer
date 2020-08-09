@@ -19,6 +19,8 @@ A simple orm based on [tokio-postgres](https://crates.io/crates/tokio-postgres) 
 
 Oxidizer helps you reduce the boiler plate of writing entities, tables & migrations when using tokio-postgres and refinery.
 
+⚠ Note that, while functional and working, this is in early stages. Use with caution. ⚠
+
 Examples:
 
 ```rust
