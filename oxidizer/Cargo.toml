@@ -6,6 +6,7 @@ authors = ["Gustavo Sampaio <gbritosampaio@gmail.com>", "davysson <davysson>"]
 edition = "2018"
 keywords = ["orm", "tokio-postgres", "refinery", "postgres", "sql", "entity"]
 categories = ["database"]
+repository = "https://github.com/oxidizer-rs/oxidizer"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,4 +21,4 @@ barrel = { version = "0.6.5", features = ["pg"] }
 refinery = { version = "0.3.0", features = ["tokio-postgres"]}
 openssl = { version = "0.10", features = ["vendored"] }
 
-oxidizer-entity-macro = { version = "0.1.0" }
+oxidizer-entity-macro = { version = "0.1.0", path = "../oxidizer-entity-macro" }
