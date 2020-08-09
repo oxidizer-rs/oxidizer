@@ -3,9 +3,9 @@
 A simple orm based on [tokio-postgres](https://crates.io/crates/tokio-postgres) and [refinery](https://crates.io/crates/refinery)
 
 -------------------------
-[![Actions Status]([ci-badge])]([ci-url])
+[![Actions Status][ci-badge]][ci-url]
 [![Crates.io][crates-badge]][crates-url]
-[![API Docs]([docs-badge])]([docs-url])
+[![API Docs][docs-badge]][docs-url]
 [![MIT licensed][mit-badge]][mit-url]
 
 [ci-badge]: https://github.com/oxidizer-rs/oxidizer/workflows/test/badge.svg
