@@ -15,8 +15,8 @@ license = "MIT"
 proc-macro = true
 
 [dependencies]
-quote = "*"
-syn = { version = "*", features = ["full", "extra-traits"] }
+quote = "1.0.7"
+syn = { version = "1.0.38", features = ["full", "extra-traits"] }
 proc-macro2 = "1.0.18"
 darling = "0.10.2"
 async-trait = "0.1.31"
