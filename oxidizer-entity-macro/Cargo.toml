@@ -1,8 +1,10 @@
 [package]
 name = "oxidizer-entity-macro"
 version = "0.1.0"
-authors = ["Gustavo Sampaio <gbritosampaio@gmail.com>"]
+authors = ["Gustavo Sampaio <gbritosampaio@gmail.com>", "davysson <davysson>"]
 edition = "2018"
+keywords = ["orm", "tokio-postgres", "refinery", "postgres", "sql", "entity"]
+categories = ["database"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
