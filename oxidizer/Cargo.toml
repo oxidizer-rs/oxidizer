@@ -4,7 +4,7 @@ name = "oxidizer"
 version = "0.1.0"
 authors = ["Gustavo Sampaio <gbritosampaio@gmail.com>", "davysson <mail@davysson.dev>"]
 edition = "2018"
-keywords = ["orm", "tokio-postgres", "refinery", "postgres", "sql", "entity"]
+keywords = ["orm", "tokio-postgres", "refinery", "postgres", "sql"]
 categories = ["database"]
 repository = "https://github.com/oxidizer-rs/oxidizer"
 
