@@ -604,7 +604,7 @@ dependencies = [
 
 [[package]]
 name = "oxidizer"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "barrel",
@@ -620,7 +620,7 @@ dependencies = [
 
 [[package]]
 name = "oxidizer-entity-macro"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "Inflector",
  "async-trait",

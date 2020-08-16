@@ -1,6 +1,6 @@
 [package]
 name = "oxidizer-entity-macro"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Gustavo Sampaio <gbritosampaio@gmail.com>", "davysson <mail@davysson.dev>"]
 edition = "2018"
 keywords = ["orm", "tokio-postgres", "refinery", "postgres", "sql"]
