@@ -185,10 +185,12 @@ impl EntityBuilder {
 
     fn build_delete_fn(&self, props: &Props) -> TokenStream2 {
         let primary_key_ident = &props.get_primary_key_field().unwrap().ident;
+        let primary_key_type = &props.get_primary_key_field().unwrap().ty;
         let table_name = props.get_table_name();
         quote! {
             async fn delete(&mut self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<bool> {
-                if self.#primary_key_ident == Default::default() {
+                let key_default: #primary_key_type = Default::default();
+                if self.#primary_key_ident == key_default {
                     return Ok(false);
                 }
 

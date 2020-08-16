@@ -2,5 +2,6 @@
 
 members = [
   "oxidizer",
-  "oxidizer-entity-macro"
+  "oxidizer-entity-macro",
+  "oxidizer-tests"
 ]
