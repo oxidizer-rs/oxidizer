@@ -240,10 +240,6 @@ impl EntityBuilder {
                 #[oxidizer::async_trait]
                 impl #trait_ident for #name {
                     async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<#model> {
-                        if self.#local_key == Default::default() {
-                            return Err(oxidizer::db::Error::DoesNotExist);
-                        }
-
                         let table_name = <#model>::get_table_name();
                         let query = format!("select * from {} where {} = $1 limit 1", &table_name, stringify!(#key));
                         let results = db.query(&query, &[&self.#local_key]).await?;
@@ -255,10 +251,6 @@ impl EntityBuilder {
                     }
 
                     async fn #set_ident(&mut self, db: &oxidizer::db::DB, v: &#model) -> oxidizer::db::DBResult<()> {
-                        if v.#key == Default::default() {
-                            return Err(oxidizer::db::Error::ReferencedModelIsNotInDB);
-                        }
-
                         #local_key_set
                         self.save(db).await?;
                         Ok(())
