@@ -1,0 +1,11 @@
+[package]
+name = "oxidizer-tests"
+version = "0.1.0"
+authors = ["Gustavo Sampaio <gbritosampaio@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "0.2", features = ["full"] }
+oxidizer = { version = "0.1.0", path = "../oxidizer" }
