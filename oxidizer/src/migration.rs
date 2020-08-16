@@ -59,6 +59,7 @@
 use barrel::{backend::Pg, Migration as RawMigration};
 
 pub use refinery::*;
+pub use refinery::include_migration_mods;
 
 /// Migration abstract layer
 pub struct Migration {
