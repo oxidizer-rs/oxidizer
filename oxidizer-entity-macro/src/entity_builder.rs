@@ -223,11 +223,7 @@ impl EntityBuilder {
 
             let local_key_set = match field.is_nullable() {
                 true => quote! {
-                    let key_default = Default::default();
-                    self.#local_key = match v.#key {
-                        vv if vv == key_default => None,
-                        vv => Some(vv),
-                    };
+                    self.#local_key = Some(v.#key);
                 },
                 false => quote! {
                     self.#local_key = v.#key;
