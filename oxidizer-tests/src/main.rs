@@ -1,6 +1,5 @@
-
-use tokio;
 use oxidizer::*;
+use tokio;
 
 #[derive(Entity, Default)]
 pub struct ABC {
@@ -11,8 +10,6 @@ pub struct ABC {
     pub addr2: String,
 }
 
-
-
 fn main() {}
 
 mod test {
@@ -22,5 +19,4 @@ mod test {
     async fn test_abc() {
         let mut abc = ABC::default();
     }
-
 }
