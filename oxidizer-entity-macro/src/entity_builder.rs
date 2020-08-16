@@ -215,6 +215,7 @@ impl EntityBuilder {
         foreign_fields.iter().map(|field| {
             let relation = field.parse_relation().unwrap();
             let local_key = field.ident.clone().unwrap();
+            let local_key_type = &field.ty;
             let get_ident = format_ident!("get_{}", to_snake_case(&relation.model));
             let set_ident = format_ident!("set_{}", to_snake_case(&relation.model));
             let trait_ident = format_ident!("__Accessor{}To{}", name, relation.model);
@@ -240,6 +241,10 @@ impl EntityBuilder {
                 #[oxidizer::async_trait]
                 impl #trait_ident for #name {
                     async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<#model> {
+                        if self.#local_key == #local_key_type::default() {
+                            return Err(oxidizer::db::Error::DoesNotExist);
+                        }
+
                         let table_name = <#model>::get_table_name();
                         let query = format!("select * from {} where {} = $1 limit 1", &table_name, stringify!(#key));
                         let results = db.query(&query, &[&self.#local_key]).await?;
@@ -251,6 +256,10 @@ impl EntityBuilder {
                     }
 
                     async fn #set_ident(&mut self, db: &oxidizer::db::DB, v: &#model) -> oxidizer::db::DBResult<()> {
+                        if v.#key == #local_key_type::default() {
+                            return Err(oxidizer::db::Error::ReferencedModelIsNotInDB);
+                        }
+
                         #local_key_set
                         self.save(db).await?;
                         Ok(())
