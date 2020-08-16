@@ -1,3 +1,3 @@
-use crate::include_migration_mods;
+use crate::migration::*;
 
 include_migration_mods!();
