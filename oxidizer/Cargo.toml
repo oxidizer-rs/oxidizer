@@ -13,7 +13,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4.11"
+chrono = "0.4.15"
 async-trait = "0.1.37"
 tokio = { version = "0.2", features = ["full"] }
 tokio-postgres = { version="0.5.4", features = ["with-chrono-0_4"]}
