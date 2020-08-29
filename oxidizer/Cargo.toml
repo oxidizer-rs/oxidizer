@@ -1,7 +1,7 @@
 [package]
 
 name = "oxidizer"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Gustavo Sampaio <gbritosampaio@gmail.com>", "davysson <mail@davysson.dev>", "Vandre Leal <vandre@runlet.app>"]
 edition = "2018"
 keywords = ["orm", "tokio-postgres", "refinery", "postgres", "sql"]
