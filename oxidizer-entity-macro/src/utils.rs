@@ -1,6 +1,8 @@
+use proc_macro2::TokenStream;
+use quote::{quote, quote_spanned};
 use syn::{
-    AngleBracketedGenericArguments, GenericArgument, Path, PathArguments, PathSegment, Type,
-    TypePath,
+    spanned::Spanned, AngleBracketedGenericArguments, Field, GenericArgument, Meta, Path,
+    PathArguments, PathSegment, Type, TypePath,
 };
 
 pub fn iterate_angle_bracketed(
@@ -80,4 +82,109 @@ pub fn check_type_order(p: &TypePath, expected: &Vec<String>, index: usize) -> b
     }
 
     iterate_path_segments(&p.path, expected, index)
+}
+
+pub fn is_typed_with(segment: &PathSegment, expected: Vec<&str>) -> bool {
+    let expected = expected.iter().map(|v| v.to_string()).collect();
+    iterate_path_arguments(segment, &expected, 0)
+}
+
+pub fn is_chrono_option(segment: &PathSegment) -> bool {
+    let expected: Vec<&str> = vec!["Option", "DateTime", "Utc"];
+    let no_option_expected: Vec<&str> = vec!["DateTime", "Utc"];
+
+    is_typed_with(segment, expected) || is_typed_with(segment, no_option_expected)
+}
+
+pub fn search_attr_in_field(field: &Field, attr: &str) -> bool {
+    for option in (&field.attrs).into_iter() {
+        let option = option.parse_meta().unwrap();
+        match option {
+            Meta::Path(path) if path.get_ident().unwrap().to_string() == attr => {
+                return true;
+            }
+            _ => {}
+        }
+    }
+    return false;
+}
+
+pub fn type_to_db_type(ty: &Type) -> TokenStream {
+    let segments = match ty {
+        syn::Type::Path(TypePath {
+            path: Path { segments, .. },
+            ..
+        }) => segments,
+        _ => unimplemented!(),
+    };
+
+    match segments.first().unwrap() {
+        PathSegment { ident, .. } if ident.to_string() == "String" => {
+            quote! { oxidizer::types::text() }
+        }
+        segment if is_typed_with(segment, vec!["Option", "String"]) => {
+            quote! { oxidizer::types::text() }
+        }
+
+        PathSegment { ident, .. } if ident.to_string() == "i8" => {
+            quote! { oxidizer::types::custom("char") }
+        }
+        segment if is_typed_with(segment, vec!["Option", "i8"]) => {
+            quote! { oxidizer::types::text() }
+        }
+
+        PathSegment { ident, .. } if ident.to_string() == "i16" => {
+            quote! { oxidizer::types::custom("SMALLINT") }
+        }
+        segment if is_typed_with(segment, vec!["Option", "i16"]) => {
+            quote! { oxidizer::types::text() }
+        }
+
+        PathSegment { ident, .. } if ident.to_string() == "i32" => {
+            quote! { oxidizer::types::integer() }
+        }
+        segment if is_typed_with(segment, vec!["Option", "i32"]) => {
+            quote! { oxidizer::types::text() }
+        }
+
+        PathSegment { ident, .. } if ident.to_string() == "u32" => {
+            quote! { oxidizer::types::custom("OID") }
+        }
+        segment if is_typed_with(segment, vec!["Option", "u32"]) => {
+            quote! { oxidizer::types::text() }
+        }
+
+        PathSegment { ident, .. } if ident.to_string() == "i64" => {
+            quote! { oxidizer::types::custom("BIGINT") }
+        }
+        segment if is_typed_with(segment, vec!["Option", "i64"]) => {
+            quote! { oxidizer::types::text() }
+        }
+
+        PathSegment { ident, .. } if ident.to_string() == "f32" => {
+            quote! { oxidizer::types::custom("REAL") }
+        }
+        segment if is_typed_with(segment, vec!["Option", "f32"]) => {
+            quote! { oxidizer::types::text() }
+        }
+
+        PathSegment { ident, .. } if ident.to_string() == "f64" => {
+            quote! { oxidizer::types::custom("DOUBLE PRECISION") }
+        }
+        segment if is_typed_with(segment, vec!["Option", "f64"]) => {
+            quote! { oxidizer::types::text() }
+        }
+
+        PathSegment { ident, .. } if ident.to_string() == "bool" => {
+            quote! { oxidizer::types::boolean() }
+        }
+        segment if is_typed_with(segment, vec!["Option", "bool"]) => {
+            quote! { oxidizer::types::text() }
+        }
+
+        segment if is_chrono_option(segment) => {
+            quote! { oxidizer::types::custom("timestamp with time zone") }
+        }
+        _ => quote_spanned! { ty.span() => compile_error!("Invalid type") },
+    }
 }

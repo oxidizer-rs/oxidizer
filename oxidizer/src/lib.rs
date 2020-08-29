@@ -141,6 +141,47 @@
 //! }
 //! ```
 //!
+//! ### #[custom_type]
+//! The custom type attribute lets you override the default type provided by oxidizer.
+//!
+//! ```
+//! use oxidizer::*;
+//! pub enum MyEnum {
+//!     Item1,
+//!     Item2,
+//! }
+//!
+//! impl std::convert::From<&MyEnum> for i32 {
+//!     fn from(v: &MyEnum) -> Self {
+//!         match v {
+//!             MyEnum::Item1 => 0,
+//!             MyEnum::Item2 => 1,
+//!         }
+//!     }
+//! }
+//!
+//! impl std::convert::From<i32> for MyEnum {
+//!     fn from(v: i32) -> Self {
+//!         match v {
+//!             0 => MyEnum::Item1,
+//!             1 => MyEnum::Item2,
+//!             _ => unimplemented!(),
+//!         }
+//!     }
+//! }
+//!
+//! #[derive(Entity)]
+//! pub struct TestCustomType {
+//!     #[primary_key]
+//!     id: i32,
+//!
+//!     #[custom_type(ty = "i32")]
+//!     my_enum: MyEnum,
+//! }
+//! ```
+//! The custom type requires you to explicity implement the related `From` functions to convert between the actual type and the overriden type
+//!
+//!
 //! ## Relations
 //!
 //! ### #[relation]

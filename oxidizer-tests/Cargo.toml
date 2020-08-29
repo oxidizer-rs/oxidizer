@@ -1,6 +1,6 @@
 [package]
 name = "oxidizer-tests"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Gustavo Sampaio <gbritosampaio@gmail.com>"]
 edition = "2018"
 
@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 tokio = { version = "0.2", features = ["full"] }
-oxidizer = { version = "0.1.0", path = "../oxidizer" }
+oxidizer = { version = "0.2.0", path = "../oxidizer" }

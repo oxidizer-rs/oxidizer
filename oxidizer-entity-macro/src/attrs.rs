@@ -26,3 +26,8 @@ pub struct HasManyAttr {
     #[darling(default)]
     pub through: Option<String>,
 }
+
+#[derive(Debug, FromMeta)]
+pub struct CustomTypeAttr {
+    pub ty: String,
+}

@@ -18,8 +18,7 @@ pub struct Props {
     has_many_attrs: Vec<HasManyAttr>,
 }
 
-type GetFieldsAllIter<'a> =
-    std::iter::Filter<syn::punctuated::Iter<'a, Field>, fn(&&Field) -> bool>;
+type GetFieldsIter<'a> = std::iter::Filter<syn::punctuated::Iter<'a, Field>, fn(&&Field) -> bool>;
 
 impl Props {
     pub fn new(
@@ -52,7 +51,7 @@ impl Props {
         }
     }
 
-    pub fn get_fields_all(&self) -> GetFieldsAllIter {
+    pub fn get_fields_all(&self) -> GetFieldsIter {
         let fields = match &self.input.data {
             Data::Struct(DataStruct {
                 fields: Fields::Named(fields),
@@ -64,7 +63,7 @@ impl Props {
         fields.iter().filter(|field| !field.is_ignore())
     }
 
-    pub fn get_ignored_fields(&self) -> GetFieldsAllIter {
+    pub fn get_ignored_fields(&self) -> GetFieldsIter {
         let fields = match &self.input.data {
             Data::Struct(DataStruct {
                 fields: Fields::Named(fields),
@@ -80,8 +79,10 @@ impl Props {
         self.get_fields_all().map(|field| &field.ident).collect()
     }
 
-    pub fn get_fields_all_types(&self) -> Vec<&Type> {
-        self.get_fields_all().map(|field| &field.ty).collect()
+    pub fn get_fields_all_types(&self) -> Vec<TokenStream2> {
+        self.get_fields_all()
+            .map(|field| field.get_type())
+            .collect()
     }
 
     pub fn get_fields_all_nullable(&self) -> Vec<bool> {
@@ -96,7 +97,7 @@ impl Props {
             .collect()
     }
 
-    fn build_db_types(&self, fields: GetFieldsAllIter) -> Vec<TokenStream2> {
+    fn build_db_types(&self, fields: GetFieldsIter) -> Vec<TokenStream2> {
         fields.map(|field| field.get_db_type()).collect()
     }
 
@@ -108,7 +109,7 @@ impl Props {
         self.get_fields_all().find(|field| field.is_primary_key())
     }
 
-    pub fn get_fields_plain_names(&self) -> Vec<&Option<Ident>> {
+    pub fn get_fields_plain(&self) -> Vec<&Field> {
         self.get_fields_all()
             .filter(|field| {
                 for option in (&field.attrs).into_iter() {
@@ -124,6 +125,12 @@ impl Props {
                 }
                 return true;
             })
+            .collect()
+    }
+
+    pub fn get_fields_plain_names(&self) -> Vec<&Option<Ident>> {
+        self.get_fields_plain()
+            .iter()
             .map(|field| &field.ident)
             .collect()
     }

@@ -2,8 +2,8 @@ use darling::FromMeta;
 use inflector::cases::snakecase::to_snake_case;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput};
+use quote::{format_ident, quote, quote_spanned};
+use syn::{parse_macro_input, DeriveInput, Type, spanned::Spanned};
 
 use super::attrs::HasManyAttr;
 use super::attrs::{EntityAttr, IndexAttr};
@@ -19,6 +19,24 @@ impl EntityBuilder {
 
     fn build_save_fn(&self, props: &Props) -> TokenStream2 {
         let table_name = props.get_table_name();
+
+        let fields_plain_value_acessors: Vec<TokenStream2> = props
+            .get_fields_plain()
+            .iter()
+            .map(|field| {
+                let name = &field.ident;
+                if let Some(ct) = field.parse_custom_type() {
+                    let ty = ct.ty;
+
+                    let ty_ident = format_ident!("{}", ty);
+
+                    return quote! { &<#ty_ident>::from(&self.#name) };
+                }
+
+                quote! { &self.#name }
+            })
+            .collect();
+
         let fields_plain_names = props.get_fields_plain_names();
 
         let comma_after_default = match fields_plain_names.len() {
@@ -66,7 +84,7 @@ impl EntityBuilder {
                         );
                         let rows = db.query(
                             query,
-                            &[#( &self.#fields_plain_names),*]
+                            &[#( #fields_plain_value_acessors ),*]
                         ).await?;
                         let first_row = rows.first().ok_or(oxidizer::db::Error::Other)?;
                         self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
@@ -85,7 +103,7 @@ impl EntityBuilder {
                         );
                         db.execute(
                             query,
-                            &[#( &self.#fields_plain_names,)* &self.#primary_key_ident],
+                            &[#( #fields_plain_value_acessors,)* &self.#primary_key_ident],
                         ).await?
                     }
                 };
@@ -96,8 +114,25 @@ impl EntityBuilder {
     }
 
     fn build_from_row_fn(&self, props: &Props) -> TokenStream2 {
-        let fields_all_names = props.get_fields_all_names();
-        let fields_all_types = props.get_fields_all_types();
+        let fields_all_loaders: Vec<TokenStream2> = props
+            .get_fields_all()
+            .map(|field| {
+                let name = &field.ident;
+
+                let ty = field.get_type();
+
+                let mut converter = quote! {};
+
+                if let Some(_) = field.parse_custom_type() {
+                    let custom_ty = &field.ty;
+                    converter = quote! { <#custom_ty>::from };
+                }
+
+                quote! {
+                    #name: #converter(row.get::<&str, #ty>(concat!(stringify!(#name)))),
+                }
+            })
+            .collect();
 
         let fields_ignored_names: Vec<&Option<syn::Ident>> = props
             .get_ignored_fields()
@@ -109,9 +144,7 @@ impl EntityBuilder {
         quote! {
             fn from_row(row: &oxidizer::tokio_postgres::Row) -> Self {
                 let mut obj: Self = Self{
-                    #(
-                        #fields_all_names: row.get::<&str, #fields_all_types>(concat!(stringify!(#fields_all_names))),
-                    )*
+                    #( #fields_all_loaders )*
                     #(
                         #fields_ignored_names: <#fields_ignored_types>::default(),
                     )*

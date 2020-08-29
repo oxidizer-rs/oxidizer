@@ -1,9 +1,11 @@
 use darling::FromMeta;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{spanned::Spanned, Field, Meta, Path, PathSegment, TypePath};
+use syn::{spanned::Spanned, Field, Meta, Path, PathSegment, TypePath, Type};
 
-use super::attrs::RelationAttr;
+use super::attrs::{CustomTypeAttr, RelationAttr};
+use super::utils::search_attr_in_field;
+use super::utils::type_to_db_type;
 use super::utils::{check_type_order, iterate_path_arguments};
 
 pub trait FieldExtras {
@@ -12,32 +14,9 @@ pub trait FieldExtras {
     fn is_nullable(&self) -> bool;
     fn is_ignore(&self) -> bool;
     fn parse_relation(&self) -> Option<RelationAttr>;
+    fn parse_custom_type(&self) -> Option<CustomTypeAttr>;
     fn get_db_type(&self) -> TokenStream2;
-}
-
-fn is_typed_with(segment: &PathSegment, expected: Vec<&str>) -> bool {
-    let expected = expected.iter().map(|v| v.to_string()).collect();
-    iterate_path_arguments(segment, &expected, 0)
-}
-
-fn is_chrono_option(segment: &PathSegment) -> bool {
-    let expected: Vec<&str> = vec!["Option", "DateTime", "Utc"];
-    let no_option_expected: Vec<&str> = vec!["DateTime", "Utc"];
-
-    is_typed_with(segment, expected) || is_typed_with(segment, no_option_expected)
-}
-
-fn search_attr_in_field(field: &Field, attr: &str) -> bool {
-    for option in (&field.attrs).into_iter() {
-        let option = option.parse_meta().unwrap();
-        match option {
-            Meta::Path(path) if path.get_ident().unwrap().to_string() == attr => {
-                return true;
-            }
-            _ => {}
-        }
-    }
-    return false;
+    fn get_type(&self) -> TokenStream2;
 }
 
 impl FieldExtras for Field {
@@ -63,6 +42,16 @@ impl FieldExtras for Field {
         None
     }
 
+    fn parse_custom_type(&self) -> Option<CustomTypeAttr> {
+        for attr in (&self.attrs).into_iter() {
+            let option = attr.parse_meta().unwrap();
+            if let Ok(ct) = CustomTypeAttr::from_meta(&option) {
+                return Some(ct);
+            }
+        }
+        None
+    }
+
     fn is_nullable(&self) -> bool {
         match &self.ty {
             syn::Type::Path(tp) => {
@@ -71,6 +60,20 @@ impl FieldExtras for Field {
             }
             _ => false,
         }
+    }
+
+    fn get_type(&self) -> TokenStream2 {
+        if let Some(ct) = self.parse_custom_type() {
+            let ty = ct.ty;
+
+            let ident = format_ident!("{}", ty);
+
+            return quote! { #ident };
+        }
+
+        let ty = &self.ty;
+
+        quote! { #ty }
     }
 
     fn get_db_type(&self) -> TokenStream2 {
@@ -92,82 +95,17 @@ impl FieldExtras for Field {
             };
         }
 
-        let segments = match &self.ty {
-            syn::Type::Path(TypePath {
-                path: Path { segments, .. },
-                ..
-            }) => segments,
-            _ => unimplemented!(),
-        };
+        if let Some(ct) = self.parse_custom_type() {
+            let ty = ct.ty;
 
-        match segments.first().unwrap() {
-            PathSegment { ident, .. } if ident.to_string() == "String" => {
-                quote! { oxidizer::types::text() }
-            }
-            segment if is_typed_with(segment, vec!["Option", "String"]) => {
-                quote! { oxidizer::types::text() }
-            }
+            let ty: Type = match syn::parse_str(&ty) {
+                Ok(t) => t,
+                Err(_) => return quote_spanned! { ty.span() => compile_error!("Invalid type") },
+            };
 
-            PathSegment { ident, .. } if ident.to_string() == "i8" => {
-                quote! { oxidizer::types::custom("char") }
-            }
-            segment if is_typed_with(segment, vec!["Option", "i8"]) => {
-                quote! { oxidizer::types::text() }
-            }
-
-            PathSegment { ident, .. } if ident.to_string() == "i16" => {
-                quote! { oxidizer::types::custom("SMALLINT") }
-            }
-            segment if is_typed_with(segment, vec!["Option", "i16"]) => {
-                quote! { oxidizer::types::text() }
-            }
-
-            PathSegment { ident, .. } if ident.to_string() == "i32" => {
-                quote! { oxidizer::types::integer() }
-            }
-            segment if is_typed_with(segment, vec!["Option", "i32"]) => {
-                quote! { oxidizer::types::text() }
-            }
-
-            PathSegment { ident, .. } if ident.to_string() == "u32" => {
-                quote! { oxidizer::types::custom("OID") }
-            }
-            segment if is_typed_with(segment, vec!["Option", "u32"]) => {
-                quote! { oxidizer::types::text() }
-            }
-
-            PathSegment { ident, .. } if ident.to_string() == "i64" => {
-                quote! { oxidizer::types::custom("BIGINT") }
-            }
-            segment if is_typed_with(segment, vec!["Option", "i64"]) => {
-                quote! { oxidizer::types::text() }
-            }
-
-            PathSegment { ident, .. } if ident.to_string() == "f32" => {
-                quote! { oxidizer::types::custom("REAL") }
-            }
-            segment if is_typed_with(segment, vec!["Option", "f32"]) => {
-                quote! { oxidizer::types::text() }
-            }
-
-            PathSegment { ident, .. } if ident.to_string() == "f64" => {
-                quote! { oxidizer::types::custom("DOUBLE PRECISION") }
-            }
-            segment if is_typed_with(segment, vec!["Option", "f64"]) => {
-                quote! { oxidizer::types::text() }
-            }
-
-            PathSegment { ident, .. } if ident.to_string() == "bool" => {
-                quote! { oxidizer::types::boolean() }
-            }
-            segment if is_typed_with(segment, vec!["Option", "bool"]) => {
-                quote! { oxidizer::types::text() }
-            }
-
-            segment if is_chrono_option(segment) => {
-                quote! { oxidizer::types::custom("timestamp with time zone") }
-            }
-            _ => quote_spanned! { self.ty.span() => compile_error!("Invalid type") },
+            return type_to_db_type(&ty);
         }
+
+        type_to_db_type(&self.ty)
     }
 }

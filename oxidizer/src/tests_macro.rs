@@ -105,7 +105,7 @@ pub struct TestManyToMany {
 }
 
 #[derive(Default)]
-pub struct TestCustomType {
+pub struct TestIgnoredType {
     data: i32,
 }
 
@@ -116,7 +116,47 @@ pub struct TestIgnoreField {
     name: String,
 
     #[field_ignore]
-    ignored: TestCustomType,
+    ignored: TestIgnoredType,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum MyEnum {
+    Item1,
+    Item2,
+}
+
+impl Default for MyEnum {
+    fn default() -> Self {
+        MyEnum::Item1
+    }
+}
+
+impl std::convert::From<&MyEnum> for i32 {
+    fn from(v: &MyEnum) -> Self {
+        match v {
+            MyEnum::Item1 => 0,
+            MyEnum::Item2 => 1,
+        }
+    }
+}
+
+impl std::convert::From<i32> for MyEnum {
+    fn from(v: i32) -> Self {
+        match v {
+            0 => MyEnum::Item1,
+            1 => MyEnum::Item2,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+#[derive(Entity, Default)]
+pub struct TestCustomType {
+    #[primary_key]
+    id: i32,
+
+    #[custom_type(ty = "i32")]
+    my_enum: MyEnum,
 }
 
 #[tokio::test]
@@ -549,4 +589,27 @@ async fn test_entity_field_ignore() {
 
     let creating = obj.save(&db).await.unwrap();
     assert_eq!(creating, false);
+}
+
+#[tokio::test]
+async fn test_entity_custom_type() {
+    let db = super::db::test_utils::create_test_db("test_entity_custom_type").await;
+
+    db.migrate_tables(&[TestCustomType::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestCustomType::default();
+    obj.my_enum = MyEnum::Item2;
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, false);
+
+    let result = TestCustomType::first(&db, "id = $1", &[&obj.id])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.my_enum, MyEnum::Item2);
 }
