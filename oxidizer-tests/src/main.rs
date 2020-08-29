@@ -1,5 +1,4 @@
 use oxidizer::*;
-use tokio;
 
 #[derive(Entity, Default)]
 pub struct ABC {

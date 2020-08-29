@@ -9,7 +9,7 @@ mod utils;
 /// Entity derive macro
 #[proc_macro_derive(
     Entity,
-    attributes(primary_key, indexed, relation, entity, index, has_many)
+    attributes(primary_key, indexed, relation, entity, index, has_many, field_ignore)
 )]
 pub fn entity_macro(item: TokenStream) -> TokenStream {
     entity_builder::EntityBuilder::new().build(item)

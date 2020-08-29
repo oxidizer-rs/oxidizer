@@ -98,11 +98,22 @@ impl EntityBuilder {
     fn build_from_row_fn(&self, props: &Props) -> TokenStream2 {
         let fields_all_names = props.get_fields_all_names();
         let fields_all_types = props.get_fields_all_types();
+
+        let fields_ignored_names: Vec<&Option<syn::Ident>> = props
+            .get_ignored_fields()
+            .map(|field| &field.ident)
+            .collect();
+        let fields_ignored_types: Vec<&syn::Type> =
+            props.get_ignored_fields().map(|field| &field.ty).collect();
+
         quote! {
             fn from_row(row: &oxidizer::tokio_postgres::Row) -> Self {
                 let mut obj: Self = Self{
                     #(
                         #fields_all_names: row.get::<&str, #fields_all_types>(concat!(stringify!(#fields_all_names))),
+                    )*
+                    #(
+                        #fields_ignored_names: <#fields_ignored_types>::default(),
                     )*
                 };
                 obj
@@ -241,7 +252,7 @@ impl EntityBuilder {
                 #[oxidizer::async_trait]
                 impl #trait_ident for #name {
                     async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<#model> {
-                        if self.#local_key == #local_key_type::default() {
+                        if self.#local_key == <#local_key_type>::default() {
                             return Err(oxidizer::db::Error::DoesNotExist);
                         }
 
@@ -256,7 +267,7 @@ impl EntityBuilder {
                     }
 
                     async fn #set_ident(&mut self, db: &oxidizer::db::DB, v: &#model) -> oxidizer::db::DBResult<()> {
-                        if v.#key == #local_key_type::default() {
+                        if v.#key == Default::default() {
                             return Err(oxidizer::db::Error::ReferencedModelIsNotInDB);
                         }
 

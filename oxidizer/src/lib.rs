@@ -125,6 +125,21 @@
 //! }
 //! ```
 //!
+//! ### #[field_ignore]
+//! Ignores the specified field. The field type must implement the `Default` trait.
+//!
+//! ```
+//! use oxidizer::*;
+//! #[derive(Default, Entity)]
+//! struct MyEntity {
+//!     #[primary_key]
+//!     id: i32,
+//!
+//!     name: String,
+//!     #[field_ignore]
+//!     email: String,
+//! }
+//! ```
 //!
 //! ## Relations
 //!

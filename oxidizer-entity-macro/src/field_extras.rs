@@ -1,7 +1,7 @@
 use darling::FromMeta;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote};
-use syn::{Field, Meta, Path, PathSegment, TypePath};
+use quote::{format_ident, quote, quote_spanned};
+use syn::{spanned::Spanned, Field, Meta, Path, PathSegment, TypePath};
 
 use super::attrs::RelationAttr;
 use super::utils::{check_type_order, iterate_path_arguments};
@@ -10,6 +10,7 @@ pub trait FieldExtras {
     fn is_primary_key(&self) -> bool;
     fn is_indexed(&self) -> bool;
     fn is_nullable(&self) -> bool;
+    fn is_ignore(&self) -> bool;
     fn parse_relation(&self) -> Option<RelationAttr>;
     fn get_db_type(&self) -> TokenStream2;
 }
@@ -46,6 +47,10 @@ impl FieldExtras for Field {
 
     fn is_indexed(&self) -> bool {
         search_attr_in_field(self, "indexed")
+    }
+
+    fn is_ignore(&self) -> bool {
+        search_attr_in_field(self, "field_ignore")
     }
 
     fn parse_relation(&self) -> Option<RelationAttr> {
@@ -162,7 +167,7 @@ impl FieldExtras for Field {
             segment if is_chrono_option(segment) => {
                 quote! { oxidizer::types::custom("timestamp with time zone") }
             }
-            _ => unimplemented!(),
+            _ => quote_spanned! { self.ty.span() => compile_error!("Invalid type") },
         }
     }
 }

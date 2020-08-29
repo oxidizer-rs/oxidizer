@@ -104,6 +104,21 @@ pub struct TestManyToMany {
     entity_id: i32,
 }
 
+#[derive(Default)]
+pub struct TestCustomType {
+    data: i32,
+}
+
+#[derive(Entity, Default)]
+pub struct TestIgnoreField {
+    #[primary_key]
+    id: i32,
+    name: String,
+
+    #[field_ignore]
+    ignored: TestCustomType,
+}
+
 #[tokio::test]
 async fn test_entity_macro_clean() {
     let _obj = TestEntity {
@@ -517,4 +532,21 @@ async fn test_many_to_many() {
     assert_eq!(1, loaded_entity.len());
 
     assert_eq!(entity.id, loaded_entity[0].entity_id);
+}
+
+#[tokio::test]
+async fn test_entity_field_ignore() {
+    let db = super::db::test_utils::create_test_db("test_entity_field_ignore").await;
+
+    db.migrate_tables(&[TestIgnoreField::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestIgnoreField::default();
+    obj.name = "test".to_string();
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, false);
 }

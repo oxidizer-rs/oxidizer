@@ -18,6 +18,9 @@ pub struct Props {
     has_many_attrs: Vec<HasManyAttr>,
 }
 
+type GetFieldsAllIter<'a> =
+    std::iter::Filter<syn::punctuated::Iter<'a, Field>, fn(&&Field) -> bool>;
+
 impl Props {
     pub fn new(
         input: DeriveInput,
@@ -49,46 +52,52 @@ impl Props {
         }
     }
 
-    pub fn get_fields_all(&self) -> &Punctuated<Field, Comma> {
-        match &self.input.data {
+    pub fn get_fields_all(&self) -> GetFieldsAllIter {
+        let fields = match &self.input.data {
             Data::Struct(DataStruct {
                 fields: Fields::Named(fields),
                 ..
             }) => &fields.named,
             _ => panic!("expected a struct with named fields"),
-        }
+        };
+
+        fields.iter().filter(|field| !field.is_ignore())
+    }
+
+    pub fn get_ignored_fields(&self) -> GetFieldsAllIter {
+        let fields = match &self.input.data {
+            Data::Struct(DataStruct {
+                fields: Fields::Named(fields),
+                ..
+            }) => &fields.named,
+            _ => panic!("expected a struct with named fields"),
+        };
+
+        fields.iter().filter(|field| field.is_ignore())
     }
 
     pub fn get_fields_all_names(&self) -> Vec<&Option<Ident>> {
-        self.get_fields_all()
-            .iter()
-            .map(|field| &field.ident)
-            .collect()
+        self.get_fields_all().map(|field| &field.ident).collect()
     }
 
     pub fn get_fields_all_types(&self) -> Vec<&Type> {
-        self.get_fields_all()
-            .iter()
-            .map(|field| &field.ty)
-            .collect()
+        self.get_fields_all().map(|field| &field.ty).collect()
     }
 
     pub fn get_fields_all_nullable(&self) -> Vec<bool> {
         self.get_fields_all()
-            .iter()
             .map(|field| field.is_nullable())
             .collect()
     }
 
     pub fn get_fields_all_indexed(&self) -> Vec<bool> {
         self.get_fields_all()
-            .iter()
             .map(|field| field.is_indexed())
             .collect()
     }
 
-    fn build_db_types(&self, fields: &Punctuated<Field, Comma>) -> Vec<TokenStream2> {
-        fields.iter().map(|field| field.get_db_type()).collect()
+    fn build_db_types(&self, fields: GetFieldsAllIter) -> Vec<TokenStream2> {
+        fields.map(|field| field.get_db_type()).collect()
     }
 
     pub fn get_fields_all_db_types(&self) -> Vec<TokenStream2> {
@@ -96,14 +105,11 @@ impl Props {
     }
 
     pub fn get_primary_key_field(&self) -> Option<&Field> {
-        self.get_fields_all()
-            .iter()
-            .find(|field| field.is_primary_key())
+        self.get_fields_all().find(|field| field.is_primary_key())
     }
 
     pub fn get_fields_plain_names(&self) -> Vec<&Option<Ident>> {
         self.get_fields_all()
-            .iter()
             .filter(|field| {
                 for option in (&field.attrs).into_iter() {
                     let option = option.parse_meta().unwrap();
@@ -141,25 +147,28 @@ impl Props {
             ));
         }
 
-        let fields = self.get_fields_all();
-        if fields.iter().filter(|field| field.is_primary_key()).count() > 1 {
-            let last_primary_key = fields
-                .iter()
-                .filter(|field| field.is_primary_key())
-                .last()
-                .unwrap();
-            let expanded = quote_spanned! {
-                last_primary_key.ident.as_ref().unwrap().span() => compile_error!("Multiple primary keys defined")
-            };
-            return Some(TokenStream::from(expanded));
+        if self
+            .get_fields_all()
+            .filter(|field| field.is_primary_key())
+            .count()
+            == 1
+        {
+            return None;
         }
 
-        None
+        let last_primary_key = self
+            .get_fields_all()
+            .filter(|field| field.is_primary_key())
+            .last()
+            .unwrap();
+        let expanded = quote_spanned! {
+            last_primary_key.ident.as_ref().unwrap().span() => compile_error!("Multiple primary keys defined")
+        };
+        Some(TokenStream::from(expanded))
     }
 
     pub fn get_fields_foreign(&self) -> Vec<&Field> {
         self.get_fields_all()
-            .iter()
             .filter(|field| field.parse_relation().is_some())
             .collect()
     }
