@@ -218,6 +218,17 @@ impl EntityBuilder {
         }
     }
 
+    fn build_is_synced_with_db_fn(&self, props: &Props) -> TokenStream2 {
+        let primary_key_ident = &props.get_primary_key_field().unwrap().ident;
+        let primary_key_type = &props.get_primary_key_field().unwrap().ty;
+        quote! {
+            fn is_synced_with_db(&self) -> bool {
+                let key_default: #primary_key_type = Default::default();
+                self.#primary_key_ident != key_default
+            }
+        }
+    }
+
     fn build_foreign_helpers(&self, props: &Props) -> Vec<TokenStream2> {
         let name = props.get_name();
 
@@ -267,7 +278,7 @@ impl EntityBuilder {
                     }
 
                     async fn #set_ident(&mut self, db: &oxidizer::db::DB, v: &#model) -> oxidizer::db::DBResult<()> {
-                        if v.#key == Default::default() {
+                        if !v.is_synced_with_db() {
                             return Err(oxidizer::db::Error::ReferencedModelIsNotInDB);
                         }
 
@@ -352,6 +363,7 @@ impl EntityBuilder {
 
         let save_fn = self.build_save_fn(&props);
         let delete_fn = self.build_delete_fn(&props);
+        let is_synced_with_db = self.build_is_synced_with_db_fn(&props);
         let from_row_fn = self.build_from_row_fn(&props);
         let create_migration_fn = self.build_create_migration_fn(&props);
         let find_fn = self.build_find_fn(&props);
@@ -370,6 +382,8 @@ impl EntityBuilder {
                 #save_fn
 
                 #delete_fn
+
+                #is_synced_with_db
 
                 #find_fn
 

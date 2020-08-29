@@ -11,6 +11,8 @@ pub trait IEntity: Sized {
     async fn save(&mut self, db: &DB) -> DBResult<bool>;
     async fn delete(&mut self, db: &DB) -> DBResult<bool>;
 
+    fn is_synced_with_db(&self) -> bool;
+
     fn from_row(row: &Row) -> Self;
     fn create_migration() -> DBResult<Migration>;
     fn get_table_name() -> String;
