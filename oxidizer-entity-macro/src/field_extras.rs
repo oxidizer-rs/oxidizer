@@ -1,7 +1,7 @@
 use darling::FromMeta;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{spanned::Spanned, Field, Meta, Path, PathSegment, TypePath, Type};
+use syn::{spanned::Spanned, Field, Meta, Path, PathSegment, Type, TypePath};
 
 use super::attrs::{CustomTypeAttr, RelationAttr};
 use super::utils::search_attr_in_field;
