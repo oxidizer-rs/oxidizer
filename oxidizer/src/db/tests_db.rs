@@ -21,7 +21,13 @@ async fn test_db_raw_query() {
     let rows_changed = db
         .execute(
             query,
-            &[&"abcde", &"film title", &chrono::NaiveDate::from_ymd(2020, 8, 30), &"action", &(2 as i32)]
+            &[
+                &"abcde",
+                &"film title",
+                &chrono::NaiveDate::from_ymd(2020, 8, 30),
+                &"action",
+                &(2 as i32),
+            ],
         )
         .await
         .unwrap();
