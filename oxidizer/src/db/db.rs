@@ -7,6 +7,7 @@ use refinery::{Report, Runner};
 use std::str::FromStr;
 
 use super::super::migration::Migration;
+use super::error::*;
 
 use barrel::backend::Pg;
 use tokio_postgres::{
@@ -50,19 +51,6 @@ where
         Ok(conn)
     }
 }
-
-#[derive(Debug)]
-pub enum Error {
-    PostgresError(tokio_postgres::Error),
-    OpensslError(openssl::error::ErrorStack),
-    MobcError(mobc::Error<tokio_postgres::Error>),
-    RefineryError(refinery::Error),
-    DoesNotExist,
-    ReferencedModelIsNotInDB,
-    Other,
-}
-
-pub type DBResult<T> = std::result::Result<T, Error>;
 
 #[derive(Clone)]
 enum ConnectionPool {

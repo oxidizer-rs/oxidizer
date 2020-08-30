@@ -30,7 +30,7 @@ impl EntityBuilder {
 
                     let ty_ident = format_ident!("{}", ty);
 
-                    return quote! { &<#ty_ident>::from(&self.#name) };
+                    return quote! { &<#ty_ident>::try_from(&self.#name)? };
                 }
 
                 quote! { &self.#name }
@@ -86,7 +86,7 @@ impl EntityBuilder {
                             query,
                             &[#( #fields_plain_value_acessors ),*]
                         ).await?;
-                        let first_row = rows.first().ok_or(oxidizer::db::Error::Other)?;
+                        let first_row = rows.first().ok_or(oxidizer::db::Error::Other("Error while saving entity".to_string()))?;
                         self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
                         1
                     },
@@ -122,14 +122,16 @@ impl EntityBuilder {
                 let ty = field.get_type();
 
                 let mut converter = quote! {};
+                let mut converter_pos = quote! {};
 
                 if let Some(_) = field.parse_custom_type() {
                     let custom_ty = &field.ty;
-                    converter = quote! { <#custom_ty>::from };
+                    converter = quote! { <#custom_ty>::try_from };
+                    converter_pos  = quote! {?};
                 }
 
                 quote! {
-                    #name: #converter(row.get::<&str, #ty>(concat!(stringify!(#name)))),
+                    #name: #converter(row.get::<&str, #ty>(concat!(stringify!(#name))))#converter_pos,
                 }
             })
             .collect();
@@ -142,14 +144,14 @@ impl EntityBuilder {
             props.get_ignored_fields().map(|field| &field.ty).collect();
 
         quote! {
-            fn from_row(row: &oxidizer::tokio_postgres::Row) -> Self {
+            fn from_row(row: &oxidizer::tokio_postgres::Row) -> oxidizer::db::DBResult<Self> {
                 let mut obj: Self = Self{
                     #( #fields_all_loaders )*
                     #(
                         #fields_ignored_names: <#fields_ignored_types>::default(),
                     )*
                 };
-                obj
+                Ok(obj)
             }
         }
     }
@@ -205,7 +207,13 @@ impl EntityBuilder {
             async fn find(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<Vec<#name>> {
                 let query_str = format!("SELECT * FROM {} WHERE {}", #table_name, condition);
                 let rows = db.query(&query_str, params).await?;
-                let results: Vec<#name> = rows.iter().map(|row| Self::from_row(row)).collect();
+
+                let mut results: Vec<#name> = Vec::with_capacity(rows.len());
+
+                for row in rows.iter() {
+                    results.push(Self::from_row(row)?);
+                }
+
                 Ok(results)
             }
         }
@@ -218,7 +226,12 @@ impl EntityBuilder {
             async fn first(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<std::option::Option<#name>> {
                 let query_str = format!("SELECT * FROM {} WHERE {} LIMIT 1", #table_name, condition);
                 let rows = db.query(&query_str, params).await?;
-                let mut results: Vec<#name> = rows.iter().map(|row| Self::from_row(row)).collect();
+
+                let mut results: Vec<#name> = Vec::with_capacity(rows.len());
+                for row in rows.iter() {
+                    results.push(Self::from_row(row)?);
+                }
+
                 match results.len() {
                     0 => Ok(None),
                     _ => Ok(Some(results.remove(0))),
@@ -307,7 +320,7 @@ impl EntityBuilder {
                             return Err(oxidizer::db::Error::DoesNotExist);
                         }
 
-                        Ok(#model::from_row(&results[0]))
+                        #model::from_row(&results[0])
                     }
 
                     async fn #set_ident(&mut self, db: &oxidizer::db::DB, v: &#model) -> oxidizer::db::DBResult<()> {

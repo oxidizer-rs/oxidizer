@@ -13,7 +13,7 @@ pub trait IEntity: Sized {
 
     fn is_synced_with_db(&self) -> bool;
 
-    fn from_row(row: &Row) -> Self;
+    fn from_row(row: &Row) -> DBResult<Self>;
     fn create_migration() -> DBResult<Migration>;
     fn get_table_name() -> String;
 

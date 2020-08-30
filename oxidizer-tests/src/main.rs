@@ -1,6 +1,6 @@
 use oxidizer::*;
 
-// mod test_2;
+// mod tmp;
 
 #[derive(PartialEq, Debug)]
 pub enum MyEnum {
@@ -14,21 +14,35 @@ impl Default for MyEnum {
     }
 }
 
-impl std::convert::From<&MyEnum> for i32 {
-    fn from(v: &MyEnum) -> Self {
+pub enum ConvertError {
+    Error,
+}
+
+impl std::fmt::Display for ConvertError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Error trying to convert")
+    }
+}
+
+impl TryFrom<&MyEnum> for i32 {
+    type Error = ConvertError;
+
+    fn try_from(v: &MyEnum) -> Result<Self, Self::Error> {
         match v {
-            MyEnum::Item1 => 0,
-            MyEnum::Item2 => 1,
+            MyEnum::Item1 => Ok(0),
+            MyEnum::Item2 => Ok(1),
         }
     }
 }
 
-impl std::convert::From<i32> for MyEnum {
-    fn from(v: i32) -> Self {
+impl TryFrom<i32> for MyEnum {
+    type Error = ConvertError;
+
+    fn try_from(v: i32) -> Result<Self, Self::Error> {
         match v {
-            0 => MyEnum::Item1,
-            1 => MyEnum::Item2,
-            _ => unimplemented!(),
+            0 => Ok(MyEnum::Item1),
+            1 => Ok(MyEnum::Item2),
+            _ => Err(ConvertError::Error),
         }
     }
 }

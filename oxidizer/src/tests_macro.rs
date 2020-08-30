@@ -1,6 +1,5 @@
 use crate as oxidizer;
-use oxidizer::entity::IEntity;
-use oxidizer_entity_macro::Entity;
+use oxidizer::*;
 
 use chrono::{DateTime, Utc};
 
@@ -131,21 +130,35 @@ impl Default for MyEnum {
     }
 }
 
-impl std::convert::From<&MyEnum> for i32 {
-    fn from(v: &MyEnum) -> Self {
+pub enum ConvertError {
+    Error,
+}
+
+impl std::fmt::Display for ConvertError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Error trying to convert")
+    }
+}
+
+impl std::convert::TryFrom<&MyEnum> for i32 {
+    type Error = ConvertError;
+
+    fn try_from(v: &MyEnum) -> Result<Self, Self::Error> {
         match v {
-            MyEnum::Item1 => 0,
-            MyEnum::Item2 => 1,
+            MyEnum::Item1 => Ok(0),
+            MyEnum::Item2 => Ok(1),
         }
     }
 }
 
-impl std::convert::From<i32> for MyEnum {
-    fn from(v: i32) -> Self {
+impl std::convert::TryFrom<i32> for MyEnum {
+    type Error = ConvertError;
+
+    fn try_from(v: i32) -> Result<Self, Self::Error> {
         match v {
-            0 => MyEnum::Item1,
-            1 => MyEnum::Item2,
-            _ => unimplemented!(),
+            0 => Ok(MyEnum::Item1),
+            1 => Ok(MyEnum::Item2),
+            _ => Err(ConvertError::Error),
         }
     }
 }
@@ -612,4 +625,38 @@ async fn test_entity_custom_type() {
         .unwrap()
         .unwrap();
     assert_eq!(result.my_enum, MyEnum::Item2);
+}
+
+#[tokio::test]
+async fn test_entity_custom_type_error() {
+    let db = super::db::test_utils::create_test_db("test_entity_custom_type_error").await;
+
+    db.migrate_tables(&[TestCustomType::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestCustomType::default();
+    obj.my_enum = MyEnum::Item2;
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let query = format!(
+        "update {} set my_enum = $1",
+        TestCustomType::get_table_name()
+    );
+    let value: i32 = 33;
+    db.execute(&query, &[&value]).await.unwrap();
+
+    let result = TestCustomType::first(&db, "id = $1", &[&obj.id]).await;
+    assert_eq!(true, result.is_err());
+
+    let query = format!(
+        "update {} set my_enum = $1",
+        TestCustomType::get_table_name()
+    );
+    let value: i32 = 0;
+    db.execute(&query, &[&value]).await.unwrap();
+
+    let result = TestCustomType::first(&db, "id = $1", &[&obj.id]).await;
+    assert_eq!(true, result.is_ok());
 }
