@@ -35,9 +35,9 @@ A Rust ORM based on [tokio-postgres](https://crates.io/crates/tokio-postgres) an
 Name  | Status  | Issue
 --- | --- | ---
 non-integer primary keys  | ⚗
-rustls  | 🗒| #13
-joins | 🗒  | #12
-mysql support | 🗒 | #11
+rustls  | 🗒| [#13](https://github.com/oxidizer-rs/oxidizer/issues/13)
+joins | 🗒  | [#12](https://github.com/oxidizer-rs/oxidizer/issues/12)
+mysql support | 🗒 | [#11](https://github.com/oxidizer-rs/oxidizer/issues/11)
 recursive queries | 🗒
 transactions  | 🗒
 select subset of columns  | 🗒
