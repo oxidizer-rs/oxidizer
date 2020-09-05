@@ -9,6 +9,7 @@ use super::attrs::HasManyAttr;
 use super::attrs::{EntityAttr, IndexAttr};
 use super::field_extras::*;
 use super::props::*;
+use super::sql_builder::{Builder, DefaultBuilder};
 
 pub struct EntityBuilder {}
 
@@ -18,23 +19,7 @@ impl EntityBuilder {
     }
 
     fn build_save_fn(&self, props: &Props) -> TokenStream2 {
-        let table_name = props.get_table_name();
-
-        let fields_ident: Vec<&Option<syn::Ident>> =
-            props.get_fields_all().map(|field| &field.ident).collect();
-        let mut current_index = 1;
-        let fields_query_values = props
-            .get_fields_all()
-            .map(|field| match field.is_increments() {
-                true => "DEFAULT".to_string(),
-                false => {
-                    let v = current_index;
-                    current_index += 1;
-                    format!("${}", v)
-                }
-            })
-            .collect::<Vec<String>>()
-            .join(",");
+        let query = DefaultBuilder::build_save_query(props);
 
         let fields_value_acessors: Vec<TokenStream2> = props
             .get_fields_all()
@@ -53,40 +38,6 @@ impl EntityBuilder {
             })
             .collect();
 
-        let mut current_index = 0;
-        let mut comma_index = 0;
-        let fields_plain_to_set: Vec<TokenStream2> = props
-            .get_fields_all()
-            .filter_map(|field| {
-                if field.is_increments() {
-                    return None;
-                }
-
-                current_index += 1;
-
-                if field.parse_primary_key().is_some() {
-                    return None;
-                }
-
-                let ident = &field.ident;
-                let v = format!("${}", current_index);
-                let comma = match comma_index {
-                    0 => quote! {},
-                    _ => quote! {,},
-                };
-                comma_index += 1;
-
-                Some(quote! {
-                    concat!(stringify!(#comma #ident =), #v)
-                })
-            })
-            .collect();
-
-        let on_conflict_do = match fields_plain_to_set.len() {
-            0 => quote! {"NOTHING"},
-            _ => quote! {"UPDATE SET ", #(#fields_plain_to_set),* },
-        };
-
         let primary_key = props.get_primary_key_field().unwrap();
         let primary_key_ident = &primary_key.ident;
         let primary_key_type = &primary_key.ty;
@@ -100,13 +51,7 @@ impl EntityBuilder {
                     creating = true;
                 }
 
-                let query = concat!("INSERT INTO ", #table_name,
-                        " (", stringify!(#(#fields_ident),*),
-                        ") values (", #fields_query_values,
-                        ") ON CONFLICT (", stringify!(#primary_key_ident), ") DO ", #on_conflict_do,
-                        " RETURNING ", stringify!(#primary_key_ident), ";"
-                    );
-                println!("{}", query);
+                #query;
                 let rows = db.query(
                     query,
                     &[#( #fields_value_acessors ),*]
@@ -214,11 +159,11 @@ impl EntityBuilder {
 
     fn build_find_fn(&self, props: &Props) -> TokenStream2 {
         let name = props.get_name();
-        let table_name = props.get_table_name();
+        let query = DefaultBuilder::build_find_query(props);
         quote! {
             async fn find(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<Vec<#name>> {
-                let query_str = format!("SELECT * FROM {} WHERE {}", #table_name, condition);
-                let rows = db.query(&query_str, params).await?;
+                #query;
+                let rows = db.query(&query, params).await?;
 
                 let mut results: Vec<#name> = Vec::with_capacity(rows.len());
 
@@ -233,11 +178,11 @@ impl EntityBuilder {
 
     fn build_first_fn(&self, props: &Props) -> TokenStream2 {
         let name = props.get_name();
-        let table_name = props.get_table_name();
+        let query = DefaultBuilder::build_first_query(props);
         quote! {
             async fn first(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<std::option::Option<#name>> {
-                let query_str = format!("SELECT * FROM {} WHERE {} LIMIT 1", #table_name, condition);
-                let rows = db.query(&query_str, params).await?;
+                #query;
+                let rows = db.query(&query, params).await?;
 
                 let mut results: Vec<#name> = Vec::with_capacity(rows.len());
                 for row in rows.iter() {
@@ -255,7 +200,7 @@ impl EntityBuilder {
     fn build_delete_fn(&self, props: &Props) -> TokenStream2 {
         let primary_key_ident = &props.get_primary_key_field().unwrap().ident;
         let primary_key_type = &props.get_primary_key_field().unwrap().ty;
-        let table_name = props.get_table_name();
+        let query = DefaultBuilder::build_delete_query(props);
         quote! {
             async fn delete(&mut self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<bool> {
                 let key_default: #primary_key_type = Default::default();
@@ -263,9 +208,9 @@ impl EntityBuilder {
                     return Ok(false);
                 }
 
-                let condition = format!("{} = $1", stringify!(#primary_key_ident));
-                let query_str = format!("DELETE FROM {} WHERE {}", #table_name, condition);
-                match db.execute(&query_str, &[&self.#primary_key_ident]).await? {
+                #query;
+
+                match db.execute(&query, &[&self.#primary_key_ident]).await? {
                     0 => Ok(false),
                     _ => {
                         self.#primary_key_ident = key_default;
@@ -311,6 +256,8 @@ impl EntityBuilder {
                 },
             };
 
+            let query  = DefaultBuilder::build_relation_get_query(props, &relation);
+
             quote! {
                 #[oxidizer::async_trait]
                 pub trait #trait_ident {
@@ -325,8 +272,8 @@ impl EntityBuilder {
                             return Err(oxidizer::db::Error::DoesNotExist);
                         }
 
-                        let table_name = <#model>::get_table_name();
-                        let query = format!("select * from {} where {} = $1 limit 1", &table_name, stringify!(#key));
+                        #query;
+
                         let results = db.query(&query, &[&self.#local_key]).await?;
                         if results.len() == 0 {
                             return Err(oxidizer::db::Error::DoesNotExist);
@@ -364,9 +311,9 @@ impl EntityBuilder {
                 None => format_ident!("{}", attr.model),
             };
 
-            let field = &attr.field;
-
             let pk = &props.get_primary_key_field().unwrap().ident;
+
+            let query = DefaultBuilder::build_relation_has_many_get_condition(props, attr);
 
             quote! {
                 #[oxidizer::async_trait]
@@ -377,7 +324,9 @@ impl EntityBuilder {
                 #[oxidizer::async_trait]
                 impl #trait_ident for #name {
                     async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<Vec<#model>> {
-                        let query = format!("{} = $1", #field);
+
+                        #query;
+
                         <#model>::find(db, &query, &[ &self.#pk ]).await
                     }
                 }

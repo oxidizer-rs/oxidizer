@@ -4,6 +4,7 @@ mod attrs;
 mod entity_builder;
 mod field_extras;
 mod props;
+mod sql_builder;
 mod utils;
 
 /// Entity derive macro
