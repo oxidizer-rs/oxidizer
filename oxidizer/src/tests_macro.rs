@@ -174,7 +174,7 @@ pub struct TestCustomType {
 
 #[derive(Entity, Default)]
 pub struct TestCustomPrimaryKey {
-    #[primary_key(increments="false")]
+    #[primary_key(increments = "false")]
     name: String,
 
     email: String,

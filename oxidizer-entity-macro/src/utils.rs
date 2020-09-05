@@ -118,21 +118,11 @@ pub fn is_integer_type(ty: &Type) -> bool {
         _ => unimplemented!(),
     };
     match segments.first().unwrap() {
-        PathSegment { ident, .. } if ident.to_string() == "i8" => {
-            true
-        }
-        PathSegment { ident, .. } if ident.to_string() == "i16" => {
-            true
-        }
-        PathSegment { ident, .. } if ident.to_string() == "i32" => {
-            true
-        }
-        PathSegment { ident, .. } if ident.to_string() == "u32" => {
-            true
-        }
-        PathSegment { ident, .. } if ident.to_string() == "i64" => {
-            true
-        }
+        PathSegment { ident, .. } if ident.to_string() == "i8" => true,
+        PathSegment { ident, .. } if ident.to_string() == "i16" => true,
+        PathSegment { ident, .. } if ident.to_string() == "i32" => true,
+        PathSegment { ident, .. } if ident.to_string() == "u32" => true,
+        PathSegment { ident, .. } if ident.to_string() == "i64" => true,
         _ => false,
     }
 }

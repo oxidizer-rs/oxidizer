@@ -20,18 +20,21 @@ impl EntityBuilder {
     fn build_save_fn(&self, props: &Props) -> TokenStream2 {
         let table_name = props.get_table_name();
 
-        let fields_ident: Vec<&Option<syn::Ident>> = props.get_fields_all().map(|field| &field.ident).collect();
+        let fields_ident: Vec<&Option<syn::Ident>> =
+            props.get_fields_all().map(|field| &field.ident).collect();
         let mut current_index = 1;
-        let fields_query_values = props.get_fields_all().map(|field| {
-            match field.is_increments() {
+        let fields_query_values = props
+            .get_fields_all()
+            .map(|field| match field.is_increments() {
                 true => "DEFAULT".to_string(),
                 false => {
                     let v = current_index;
                     current_index += 1;
                     format!("${}", v)
-                },
-            }
-        }).collect::<Vec<String>>().join(",");
+                }
+            })
+            .collect::<Vec<String>>()
+            .join(",");
 
         let fields_value_acessors: Vec<TokenStream2> = props
             .get_fields_all()
@@ -52,7 +55,8 @@ impl EntityBuilder {
 
         let mut current_index = 0;
         let mut comma_index = 0;
-        let fields_plain_to_set: Vec<TokenStream2> = props.get_fields_all()
+        let fields_plain_to_set: Vec<TokenStream2> = props
+            .get_fields_all()
             .filter_map(|field| {
                 if field.is_increments() {
                     return None;
@@ -67,7 +71,7 @@ impl EntityBuilder {
                 let ident = &field.ident;
                 let v = format!("${}", current_index);
                 let comma = match comma_index {
-                    0 => quote!{},
+                    0 => quote! {},
                     _ => quote! {,},
                 };
                 comma_index += 1;
@@ -79,7 +83,7 @@ impl EntityBuilder {
             .collect();
 
         let on_conflict_do = match fields_plain_to_set.len() {
-            0 => quote!{"NOTHING"},
+            0 => quote! {"NOTHING"},
             _ => quote! {"UPDATE SET ", #(#fields_plain_to_set),* },
         };
 
@@ -164,7 +168,11 @@ impl EntityBuilder {
         let fields_all_db_types = props.get_fields_all_db_types();
         let fields_all_nullable = props.get_fields_all_nullable();
         let fields_all_indexed = props.get_fields_all_indexed();
-        let fields_all_primary: Vec<bool> = props.get_fields_all_primary().iter().map(|attr| attr.is_some()).collect();
+        let fields_all_primary: Vec<bool> = props
+            .get_fields_all_primary()
+            .iter()
+            .map(|attr| attr.is_some())
+            .collect();
 
         let indexes: Vec<TokenStream2> = props
             .get_indexes()

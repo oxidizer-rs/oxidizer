@@ -3,7 +3,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{spanned::Spanned, Field, Meta, Path, PathSegment, Type, TypePath};
 
-use super::attrs::{CustomTypeAttr, RelationAttr, PrimaryKeyAttr};
+use super::attrs::{CustomTypeAttr, PrimaryKeyAttr, RelationAttr};
 use super::utils::search_attr_in_field;
 use super::utils::type_to_db_type;
 use super::utils::{check_type_order, iterate_path_arguments};

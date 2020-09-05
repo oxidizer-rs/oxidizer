@@ -3,8 +3,8 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, quote_spanned};
 use syn::{
-    punctuated::Punctuated, token::Comma, Data, DataStruct, DeriveInput, Field, Fields, Ident,
-    Meta, Type,PathArguments, PathSegment, spanned::Spanned
+    punctuated::Punctuated, spanned::Spanned, token::Comma, Data, DataStruct, DeriveInput, Field,
+    Fields, Ident, Meta, PathArguments, PathSegment, Type,
 };
 
 use super::attrs::HasManyAttr;
@@ -119,7 +119,8 @@ impl Props {
     }
 
     pub fn get_primary_key_field(&self) -> Option<&Field> {
-        self.get_fields_all().find(|field| field.parse_primary_key().is_some())
+        self.get_fields_all()
+            .find(|field| field.parse_primary_key().is_some())
     }
 
     pub fn get_fields_plain(&self) -> Vec<&Field> {
@@ -160,7 +161,9 @@ impl Props {
             }
 
             if !is_integer_type(&field.ty) {
-                return Some(TokenStream::from(quote_spanned! { field.ty.span() => compile_error!("Increments can only be used with integer types") }))
+                return Some(TokenStream::from(
+                    quote_spanned! { field.ty.span() => compile_error!("Increments can only be used with integer types") },
+                ));
             }
         }
 
