@@ -26,6 +26,21 @@ A Rust ORM based on [tokio-postgres](https://crates.io/crates/tokio-postgres) an
 
 > Note that, while functional and working, this is in early stages. Use with caution.
 
+## Features/Roadmap
+
+- ⚙ - Work in progress
+- 🗒 - TODO
+
+Name  | Status  | Issue
+--- | --- | ---
+non-integer primary keys  | ⚙
+rustls  | 🗒| #13
+joins | 🗒  | #12
+mysql support | 🗒 | #11
+recursive queries | 🗒
+transactions  | 🗒
+select subset of columns  | 🗒
+
 ## Contributing
 
 There are a couple of ways in which you can contribute to Oxidizer, for example:
