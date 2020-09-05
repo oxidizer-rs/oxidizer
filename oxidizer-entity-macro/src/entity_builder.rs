@@ -20,9 +20,22 @@ impl EntityBuilder {
     fn build_save_fn(&self, props: &Props) -> TokenStream2 {
         let table_name = props.get_table_name();
 
-        let fields_plain_value_acessors: Vec<TokenStream2> = props
-            .get_fields_plain()
-            .iter()
+        let fields_ident: Vec<&Option<syn::Ident>> = props.get_fields_all().map(|field| &field.ident).collect();
+        let mut current_index = 1;
+        let fields_query_values = props.get_fields_all().map(|field| {
+            match field.is_increments() {
+                true => "DEFAULT".to_string(),
+                false => {
+                    let v = current_index;
+                    current_index += 1;
+                    format!("${}", v)
+                },
+            }
+        }).collect::<Vec<String>>().join(",");
+
+        let fields_value_acessors: Vec<TokenStream2> = props
+            .get_fields_all()
+            .filter(|field| !field.is_increments())
             .map(|field| {
                 let name = &field.ident;
                 if let Some(ct) = field.parse_custom_type() {
@@ -37,25 +50,38 @@ impl EntityBuilder {
             })
             .collect();
 
-        let fields_plain_names = props.get_fields_plain_names();
-
-        let comma_after_default = match fields_plain_names.len() {
-            0 => "",
-            _ => ",",
-        };
-
-        let numbered = props.get_fields_plain_numbered();
-        let fields_plain_numbered: Vec<String> = numbered
-            .iter()
-            .enumerate()
-            .map(|(i, v)| {
-                if i == numbered.len() - 1 {
-                    return v.to_string();
+        let mut current_index = 0;
+        let mut comma_index = 0;
+        let fields_plain_to_set: Vec<TokenStream2> = props.get_fields_all()
+            .filter_map(|field| {
+                if field.is_increments() {
+                    return None;
                 }
-                return format!("{},", v);
+
+                current_index += 1;
+
+                if field.parse_primary_key().is_some() {
+                    return None;
+                }
+
+                let ident = &field.ident;
+                let v = format!("${}", current_index);
+                let comma = match comma_index {
+                    0 => quote!{},
+                    _ => quote! {,},
+                };
+                comma_index += 1;
+
+                Some(quote! {
+                    concat!(stringify!(#comma #ident =), #v)
+                })
             })
             .collect();
-        let fields_plain_numbered_next_index = props.get_fields_plain_numbered_next_index();
+
+        let on_conflict_do = match fields_plain_to_set.len() {
+            0 => quote!{"NOTHING"},
+            _ => quote! {"UPDATE SET ", #(#fields_plain_to_set),* },
+        };
 
         let primary_key = props.get_primary_key_field().unwrap();
         let primary_key_ident = &primary_key.ident;
@@ -65,48 +91,24 @@ impl EntityBuilder {
             async fn save(&mut self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<bool> {
                 let mut creating = false;
                 let primary_key_default: #primary_key_type = Default::default();
-                let _result = match self.#primary_key_ident {
-                    v if self.#primary_key_ident == primary_key_default => {
-                        creating = true;
-                        let query = concat!(
-                            "INSERT INTO ",
-                            #table_name,
-                            " (",
-                            stringify!(#primary_key_ident),
-                            #comma_after_default,
-                            stringify!(#(#fields_plain_names),*),
-                            ") values(DEFAULT",
-                            #comma_after_default,
-                            #( #fields_plain_numbered ,)*
-                            ") RETURNING ",
-                            stringify!(#primary_key_ident),
-                            ";"
-                        );
-                        let rows = db.query(
-                            query,
-                            &[#( #fields_plain_value_acessors ),*]
-                        ).await?;
-                        let first_row = rows.first().ok_or(oxidizer::db::Error::Other("Error while saving entity".to_string()))?;
-                        self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
-                        1
-                    },
-                    id => {
-                        let query = concat!(
-                            "UPDATE ",
-                            #table_name,
-                            " SET ",
-                            #(stringify!(#fields_plain_names =), #fields_plain_numbered,)*
-                            " WHERE ",
-                            stringify!(#primary_key_ident),
-                            "= $",
-                            #fields_plain_numbered_next_index
-                        );
-                        db.execute(
-                            query,
-                            &[#( #fields_plain_value_acessors,)* &self.#primary_key_ident],
-                        ).await?
-                    }
-                };
+
+                if self.#primary_key_ident == primary_key_default {
+                    creating = true;
+                }
+
+                let query = concat!("INSERT INTO ", #table_name,
+                        " (", stringify!(#(#fields_ident),*),
+                        ") values (", #fields_query_values,
+                        ") ON CONFLICT (", stringify!(#primary_key_ident), ") DO ", #on_conflict_do,
+                        " RETURNING ", stringify!(#primary_key_ident), ";"
+                    );
+                println!("{}", query);
+                let rows = db.query(
+                    query,
+                    &[#( #fields_value_acessors ),*]
+                ).await?;
+                let first_row = rows.first().ok_or(oxidizer::db::Error::Other("Error while saving entity".to_string()))?;
+                self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
 
                 Ok(creating)
             }
@@ -162,6 +164,7 @@ impl EntityBuilder {
         let fields_all_db_types = props.get_fields_all_db_types();
         let fields_all_nullable = props.get_fields_all_nullable();
         let fields_all_indexed = props.get_fields_all_indexed();
+        let fields_all_primary: Vec<bool> = props.get_fields_all_primary().iter().map(|attr| attr.is_some()).collect();
 
         let indexes: Vec<TokenStream2> = props
             .get_indexes()
@@ -189,6 +192,7 @@ impl EntityBuilder {
                             #fields_all_db_types
                                 .nullable(#fields_all_nullable)
                                 .indexed(#fields_all_indexed)
+                                .primary(#fields_all_primary)
                         )
                     ;)*
 
@@ -256,7 +260,7 @@ impl EntityBuilder {
                 match db.execute(&query_str, &[&self.#primary_key_ident]).await? {
                     0 => Ok(false),
                     _ => {
-                        self.#primary_key_ident = 0;
+                        self.#primary_key_ident = key_default;
                         Ok(true)
                     },
                 }

@@ -4,12 +4,13 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, quote_spanned};
 use syn::{
     punctuated::Punctuated, token::Comma, Data, DataStruct, DeriveInput, Field, Fields, Ident,
-    Meta, Type,
+    Meta, Type,PathArguments, PathSegment, spanned::Spanned
 };
 
 use super::attrs::HasManyAttr;
-use super::attrs::{EntityAttr, IndexAttr};
+use super::attrs::{EntityAttr, IndexAttr, PrimaryKeyAttr};
 use super::field_extras::*;
+use super::utils::is_integer_type;
 
 pub struct Props {
     input: DeriveInput,
@@ -97,6 +98,18 @@ impl Props {
             .collect()
     }
 
+    pub fn get_fields_all_primary(&self) -> Vec<Option<PrimaryKeyAttr>> {
+        self.get_fields_all()
+            .map(|field| field.parse_primary_key())
+            .collect()
+    }
+
+    pub fn get_fields_all_increments(&self) -> Vec<bool> {
+        self.get_fields_all()
+            .map(|field| field.is_increments())
+            .collect()
+    }
+
     fn build_db_types(&self, fields: GetFieldsIter) -> Vec<TokenStream2> {
         fields.map(|field| field.get_db_type()).collect()
     }
@@ -106,25 +119,12 @@ impl Props {
     }
 
     pub fn get_primary_key_field(&self) -> Option<&Field> {
-        self.get_fields_all().find(|field| field.is_primary_key())
+        self.get_fields_all().find(|field| field.parse_primary_key().is_some())
     }
 
     pub fn get_fields_plain(&self) -> Vec<&Field> {
         self.get_fields_all()
-            .filter(|field| {
-                for option in (&field.attrs).into_iter() {
-                    let option = option.parse_meta().unwrap();
-                    match option {
-                        Meta::Path(path)
-                            if path.get_ident().unwrap().to_string() == "primary_key" =>
-                        {
-                            return false;
-                        }
-                        _ => {}
-                    }
-                }
-                return true;
-            })
+            .filter(|field| field.parse_primary_key().is_none())
             .collect()
     }
 
@@ -154,9 +154,20 @@ impl Props {
             ));
         }
 
+        for field in self.get_fields_all() {
+            if !field.is_increments() {
+                continue;
+            }
+
+            if !is_integer_type(&field.ty) {
+                return Some(TokenStream::from(quote_spanned! { field.ty.span() => compile_error!("Increments can only be used with integer types") }))
+            }
+        }
+
+        // TODO this limitation should go away eventually
         if self
             .get_fields_all()
-            .filter(|field| field.is_primary_key())
+            .filter(|field| field.parse_primary_key().is_some())
             .count()
             == 1
         {
@@ -165,7 +176,7 @@ impl Props {
 
         let last_primary_key = self
             .get_fields_all()
-            .filter(|field| field.is_primary_key())
+            .filter(|field| field.parse_primary_key().is_some())
             .last()
             .unwrap();
         let expanded = quote_spanned! {

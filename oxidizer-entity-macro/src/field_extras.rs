@@ -3,16 +3,17 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, quote_spanned};
 use syn::{spanned::Spanned, Field, Meta, Path, PathSegment, Type, TypePath};
 
-use super::attrs::{CustomTypeAttr, RelationAttr};
+use super::attrs::{CustomTypeAttr, RelationAttr, PrimaryKeyAttr};
 use super::utils::search_attr_in_field;
 use super::utils::type_to_db_type;
 use super::utils::{check_type_order, iterate_path_arguments};
 
 pub trait FieldExtras {
-    fn is_primary_key(&self) -> bool;
     fn is_indexed(&self) -> bool;
     fn is_nullable(&self) -> bool;
     fn is_ignore(&self) -> bool;
+    fn is_increments(&self) -> bool;
+    fn parse_primary_key(&self) -> Option<PrimaryKeyAttr>;
     fn parse_relation(&self) -> Option<RelationAttr>;
     fn parse_custom_type(&self) -> Option<CustomTypeAttr>;
     fn get_db_type(&self) -> TokenStream2;
@@ -20,16 +21,30 @@ pub trait FieldExtras {
 }
 
 impl FieldExtras for Field {
-    fn is_primary_key(&self) -> bool {
-        search_attr_in_field(self, "primary_key")
-    }
-
     fn is_indexed(&self) -> bool {
         search_attr_in_field(self, "indexed")
     }
 
     fn is_ignore(&self) -> bool {
         search_attr_in_field(self, "field_ignore")
+    }
+
+    fn is_increments(&self) -> bool {
+        if let Some(attr) = self.parse_primary_key() {
+            return attr.increments;
+        }
+
+        search_attr_in_field(self, "increments")
+    }
+
+    fn parse_primary_key(&self) -> Option<PrimaryKeyAttr> {
+        for attr in (&self.attrs).into_iter() {
+            let option = attr.parse_meta().unwrap();
+            if let Ok(relation) = PrimaryKeyAttr::from_meta(&option) {
+                return Some(relation);
+            }
+        }
+        None
     }
 
     fn parse_relation(&self) -> Option<RelationAttr> {
@@ -77,10 +92,8 @@ impl FieldExtras for Field {
     }
 
     fn get_db_type(&self) -> TokenStream2 {
-        if self.is_primary_key() {
-            return quote! {
-                oxidizer::types::primary()
-            };
+        if self.is_increments() {
+            return quote! { oxidizer::types::custom("SERIAL") };
         }
 
         if let Some(relation) = self.parse_relation() {

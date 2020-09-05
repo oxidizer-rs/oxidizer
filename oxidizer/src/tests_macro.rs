@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 
 #[derive(Entity, Default)]
 pub struct TestEntity {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
     name: String,
 
@@ -23,7 +23,7 @@ pub struct TestEntity {
 
 #[derive(Entity)]
 struct TestRelation {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
     device_id: String,
 
@@ -31,15 +31,15 @@ struct TestRelation {
     entity_id: i32,
 }
 
-#[derive(Entity)]
+#[derive(Entity, Default)]
 struct TestOnlyPK {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
 }
 
 #[derive(Default, Entity)]
 struct TestNullable {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
 
     name: Option<String>,
@@ -47,7 +47,7 @@ struct TestNullable {
 
 #[derive(Default, Entity)]
 struct TestNullableRelation {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
 
     #[relation(model = "TestEntity", key = "id")]
@@ -57,7 +57,7 @@ struct TestNullableRelation {
 #[derive(Default, Entity)]
 #[entity(table_name = "custom")]
 struct TestCustomTableName {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
 }
 
@@ -66,7 +66,7 @@ struct TestCustomTableName {
 #[index(name = "myindex", columns = "name, date", unique)]
 #[index(name = "myindex2", columns = "email", unique)]
 struct TestCustomIndexes {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
 
     name: String,
@@ -76,7 +76,7 @@ struct TestCustomIndexes {
 
 #[derive(Default, Entity)]
 pub struct TestReverseRelation {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
 
     #[relation(model = "TestReverseRelationTarget", key = "id")]
@@ -87,13 +87,13 @@ pub struct TestReverseRelation {
 #[has_many(model = "TestReverseRelation", field = "entity_id")]
 #[has_many(model = "TestEntity", field = "entity_id", through = "TestManyToMany")]
 pub struct TestReverseRelationTarget {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
 }
 
 #[derive(Default, Entity)]
 pub struct TestManyToMany {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
 
     #[relation(model = "TestReverseRelationTarget", key = "id")]
@@ -110,7 +110,7 @@ pub struct TestIgnoredType {
 
 #[derive(Entity, Default)]
 pub struct TestIgnoreField {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
     name: String,
 
@@ -165,11 +165,19 @@ impl std::convert::TryFrom<i32> for MyEnum {
 
 #[derive(Entity, Default)]
 pub struct TestCustomType {
-    #[primary_key]
+    #[primary_key(increments)]
     id: i32,
 
     #[custom_type(ty = "i32")]
     my_enum: MyEnum,
+}
+
+#[derive(Entity, Default)]
+pub struct TestCustomPrimaryKey {
+    #[primary_key(increments="false")]
+    name: String,
+
+    email: String,
 }
 
 #[tokio::test]
@@ -448,7 +456,7 @@ async fn test_safe_migrations() {
     #[derive(Entity)]
     #[entity(table_name = "test_entity")]
     struct TestEntityChanged {
-        #[primary_key]
+        #[primary_key(increments)]
         id: i32,
         name: String,
 
@@ -481,7 +489,7 @@ async fn test_migrations_changed() {
     #[derive(Entity)]
     #[entity(table_name = "test_entity")]
     struct TestEntityChanged {
-        #[primary_key]
+        #[primary_key(increments)]
         id: i32,
         name: String,
 
@@ -659,4 +667,50 @@ async fn test_entity_custom_type_error() {
 
     let result = TestCustomType::first(&db, "id = $1", &[&obj.id]).await;
     assert_eq!(true, result.is_ok());
+}
+
+#[tokio::test]
+async fn test_only_pk() {
+    let db = super::db::test_utils::create_test_db("test_only_pk").await;
+
+    db.migrate_tables(&[TestOnlyPK::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestOnlyPK::default();
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, false);
+
+    let result = TestOnlyPK::first(&db, "id = $1", &[&obj.id])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.id, obj.id);
+}
+
+#[tokio::test]
+async fn test_custom_primary_key() {
+    let db = super::db::test_utils::create_test_db("test_custom_primary_key").await;
+
+    db.migrate_tables(&[TestCustomPrimaryKey::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestCustomPrimaryKey::default();
+    obj.name = "hello".to_string();
+    obj.email = "world".to_string();
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, false);
+
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, false);
+
+    let result = TestCustomPrimaryKey::first(&db, "name = $1", &[&obj.name])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.email, obj.email);
 }

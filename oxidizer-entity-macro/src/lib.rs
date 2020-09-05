@@ -17,7 +17,8 @@ mod utils;
         index,
         has_many,
         field_ignore,
-        custom_type
+        custom_type,
+        increments,
     )
 )]
 pub fn entity_macro(item: TokenStream) -> TokenStream {

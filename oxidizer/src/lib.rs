@@ -21,7 +21,7 @@
 //! #[derive(Entity)]
 //! #[derive(Default)]
 //! pub struct MyEntity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //!
 //!     name: String,
@@ -60,16 +60,26 @@
 //! Derive attributes can be used to create indexes, change the default table name and
 //! create reverse relation accessors
 //!
-//! ### #[primary_key]
+//! ### #[primary_key(increments)]
 //! Required
-//! Field attribute used to mark the field as the primary key, this will make the field autoincrement
+//! Field attribute used to mark the field as the primary key.
+//! `increments` will make the field integer autoincrement
 //!
 //! ```
 //! use oxidizer::*;
 //! #[derive(Entity)]
 //! struct Entity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32
+//! }
+//! ```
+//!
+//! ```
+//! use oxidizer::*;
+//! #[derive(Entity)]
+//! struct Entity {
+//!     #[primary_key()]
+//!     name: String
 //! }
 //! ```
 //!
@@ -80,7 +90,7 @@
 //! use oxidizer::*;
 //! #[derive(Entity)]
 //! struct Entity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //!     #[indexed]
 //!     name: String,
@@ -104,7 +114,7 @@
 //! #[derive(Entity)]
 //! #[entity(table_name="custom_table_name")]
 //! struct Entity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32
 //! }
 //! ```
@@ -117,7 +127,7 @@
 //! #[derive(Default, Entity)]
 //! #[index(name="myindex", columns="name, email", unique)]
 //! struct MyEntity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //!
 //!     name: String,
@@ -132,7 +142,7 @@
 //! use oxidizer::*;
 //! #[derive(Default, Entity)]
 //! struct MyEntity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //!
 //!     name: String,
@@ -186,7 +196,7 @@
 //!
 //! #[derive(Entity)]
 //! pub struct TestCustomType {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //!
 //!     #[custom_type(ty = "i32")]
@@ -205,13 +215,13 @@
 //! use oxidizer::*;
 //! #[derive(Entity)]
 //! struct Entity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //! }
 //!
 //! #[derive(Entity)]
 //! struct TestRelation {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //!     device_id: String,
 //!
@@ -241,14 +251,14 @@
 //! #[derive(Default)]
 //! #[has_many(model="TargetEntity", field="entity_id")]
 //! pub struct Entity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //!     name: String
 //! }
 //!
 //! #[derive(Default, Entity)]
 //! pub struct TargetEntity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 
 //!     #[relation(model="Entity", key="id")]
@@ -272,7 +282,7 @@
 //! #[derive(Entity)]
 //! #[derive(Default)]
 //! pub struct Entity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //!     name: String
 //! }
@@ -280,13 +290,13 @@
 //! #[derive(Default, Entity)]
 //! #[has_many(model="Entity", field="entity_id", through="TestManyToMany")]
 //! pub struct TargetEntity {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //! }
 //!
 //! #[derive(Default, Entity)]
 //! pub struct TestManyToMany {
-//!     #[primary_key]
+//!     #[primary_key(increments)]
 //!     id: i32,
 //!
 //!     #[relation(model="TargetEntity", key="id")]

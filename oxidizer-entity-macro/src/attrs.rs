@@ -1,6 +1,12 @@
 use darling::FromMeta;
 
 #[derive(Debug, FromMeta)]
+pub struct PrimaryKeyAttr {
+    #[darling(default)]
+    pub increments: bool,
+}
+
+#[derive(Debug, FromMeta)]
 pub struct RelationAttr {
     pub model: String,
     pub key: String,

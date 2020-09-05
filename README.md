@@ -30,10 +30,11 @@ A Rust ORM based on [tokio-postgres](https://crates.io/crates/tokio-postgres) an
 
 - ⚙ - Work in progress
 - 🗒 - TODO
+- ⚗ - Implemented/Testing
 
 Name  | Status  | Issue
 --- | --- | ---
-non-integer primary keys  | ⚙
+non-integer primary keys  | ⚗
 rustls  | 🗒| #13
 joins | 🗒  | #12
 mysql support | 🗒 | #11

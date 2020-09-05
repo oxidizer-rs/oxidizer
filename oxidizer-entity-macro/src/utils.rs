@@ -109,6 +109,34 @@ pub fn search_attr_in_field(field: &Field, attr: &str) -> bool {
     return false;
 }
 
+pub fn is_integer_type(ty: &Type) -> bool {
+    let segments = match ty {
+        syn::Type::Path(TypePath {
+            path: Path { segments, .. },
+            ..
+        }) => segments,
+        _ => unimplemented!(),
+    };
+    match segments.first().unwrap() {
+        PathSegment { ident, .. } if ident.to_string() == "i8" => {
+            true
+        }
+        PathSegment { ident, .. } if ident.to_string() == "i16" => {
+            true
+        }
+        PathSegment { ident, .. } if ident.to_string() == "i32" => {
+            true
+        }
+        PathSegment { ident, .. } if ident.to_string() == "u32" => {
+            true
+        }
+        PathSegment { ident, .. } if ident.to_string() == "i64" => {
+            true
+        }
+        _ => false,
+    }
+}
+
 pub fn type_to_db_type(ty: &Type) -> TokenStream {
     let segments = match ty {
         syn::Type::Path(TypePath {
