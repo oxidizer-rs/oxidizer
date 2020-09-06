@@ -180,6 +180,17 @@ pub struct TestCustomPrimaryKey {
     email: String,
 }
 
+#[derive(Entity, Default)]
+pub struct TestMultiplePrimaryKey {
+    #[primary_key(increments = "false")]
+    name: String,
+
+    #[primary_key(increments = "false")]
+    email: String,
+
+    data: String,
+}
+
 #[tokio::test]
 async fn test_entity_macro_clean() {
     let _obj = TestEntity {
@@ -709,6 +720,31 @@ async fn test_custom_primary_key() {
     assert_eq!(creating, false);
 
     let result = TestCustomPrimaryKey::first(&db, "name = $1", &[&obj.name])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.email, obj.email);
+}
+
+#[tokio::test]
+async fn test_multiple_primary_key() {
+    let db = super::db::test_utils::create_test_db("test_multiple_primary_key").await;
+
+    db.migrate_tables(&[TestMultiplePrimaryKey::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestMultiplePrimaryKey::default();
+    obj.name = "hello".to_string();
+    obj.email = "world".to_string();
+    obj.data = "1234abc".to_string();
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, false);
+
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, false);
+
+    let result = TestMultiplePrimaryKey::first(&db, "name = $1", &[&obj.name])
         .await
         .unwrap()
         .unwrap();

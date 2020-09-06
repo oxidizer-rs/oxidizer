@@ -167,25 +167,7 @@ impl Props {
             }
         }
 
-        // TODO this limitation should go away eventually
-        if self
-            .get_fields_all()
-            .filter(|field| field.parse_primary_key().is_some())
-            .count()
-            == 1
-        {
-            return None;
-        }
-
-        let last_primary_key = self
-            .get_fields_all()
-            .filter(|field| field.parse_primary_key().is_some())
-            .last()
-            .unwrap();
-        let expanded = quote_spanned! {
-            last_primary_key.ident.as_ref().unwrap().span() => compile_error!("Multiple primary keys defined")
-        };
-        Some(TokenStream::from(expanded))
+        None
     }
 
     pub fn get_fields_foreign(&self) -> Vec<&Field> {
