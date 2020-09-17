@@ -4,8 +4,13 @@ on:
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
+    branches:
+      - main
   schedule:
     - cron: '0 0 * * *'
+  pull_request:
+    branches:
+      - main
 jobs:
   security_audit:
     runs-on: ubuntu-latest
