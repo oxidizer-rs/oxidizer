@@ -1,0 +1,13 @@
+pull_request_rules:
+  - name: Automatic merge dependabot prs
+    conditions:
+      - author~=^dependabot(|-preview)\[bot\]$
+      - status-success=clippy_check
+      - status-success=security_audit
+      - status-success=fmt_check
+      - status-success=test
+      - status-success=clippy
+    actions:
+      merge:
+        method: merge
+
