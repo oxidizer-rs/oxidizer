@@ -1,7 +1,10 @@
 #[derive(Debug)]
 pub enum Error {
     PostgresError(tokio_postgres::Error),
+    #[cfg(target_feature = "tls-openssl")]
     OpensslError(openssl::error::ErrorStack),
+    #[cfg(target_feature = "tls-rustls")]
+    RustlsError(String),
     MobcError(mobc::Error<tokio_postgres::Error>),
     RefineryError(refinery::Error),
     DoesNotExist,
