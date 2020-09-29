@@ -16,7 +16,7 @@ use tokio_postgres::{row::Row, types::ToSql, Client};
 
 
 struct ConnectionManager {
-    connections: Box<dyn ConnectionProvider>,
+    provider: Box<dyn ConnectionProvider>,
 }
 
 #[async_trait]
@@ -25,7 +25,7 @@ impl Manager for ConnectionManager {
     type Error = tokio_postgres::Error;
 
     async fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        self.connections.connect().await
+        self.provider.connect().await
     }
 
     async fn check(&self, conn: Self::Connection) -> Result<Self::Connection, Self::Error> {
@@ -45,9 +45,9 @@ impl DB {
         let config =
             tokio_postgres::Config::from_str(uri).map_err(|err| Error::PostgresError(err))?;
 
-        let connections = connections::create_connection_provider(config, ca_file)?;
+        let provider = connections::create_connection_provider(config, ca_file)?;
         let manager = ConnectionManager {
-            connections
+            provider
         };
 
         Ok(DB {
