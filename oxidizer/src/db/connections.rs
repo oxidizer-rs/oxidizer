@@ -8,6 +8,19 @@ pub trait ConnectionProvider: Send + Sync + 'static {
     async fn connect(&self) -> Result<Client, tokio_postgres::Error>;
 }
 
+pub fn create_connection_provider(
+    config: Config,
+    ca_file: Option<&str>,
+) -> Result<Box<dyn ConnectionProvider>, Error> {
+    let prov: Box<dyn ConnectionProvider> = if let Some(ca_file) = ca_file {
+        new_tls(config, ca_file)?
+    } else {
+        no_tls(config)
+    };
+
+    Ok(prov)
+}
+
 struct NoTlsConnectionProvider {
     config: Config,
 }
@@ -21,45 +34,35 @@ impl ConnectionProvider for NoTlsConnectionProvider {
     }
 }
 
-fn no_tls(config: Config) -> NoTlsConnectionProvider {
-    NoTlsConnectionProvider { config }
-}
-
-pub fn create_connection_provider(
-    config: Config,
-    ca_file: Option<&str>,
-) -> Result<Box<dyn ConnectionProvider>, Error> {
-    #[allow(clippy::redundant_clone)]
-    let prov: Box<dyn ConnectionProvider> = Box::new(no_tls(config.clone()));
-
-    #[allow(unused_variables)]
-    if let Some(ca_file) = ca_file {
-        #[cfg(target_feature = "tls-openssl")]
-        {
-            prov = tls_openssl::new(config.clone(), ca_file)?;
-        }
-        #[cfg(target_feature = "tls-rustls")]
-        {
-            prov = tls_rustls::new(config.clone(), ca_file)?;
-        }
-    }
-
-    Ok(prov)
+fn no_tls(config: Config) -> Box<dyn ConnectionProvider> {
+    Box::new(NoTlsConnectionProvider { config })
 }
 
 cfg_if::cfg_if! {
-if #[cfg(target_feature = "tls-openssl")] {
+    if #[cfg(not(any(feature = "tls-openssl", feature = "tls-rustls")))] {
+        fn new_tls(config: Config, ca_file: &str) -> Result<Box<dyn ConnectionProvider>, Error> {
+            eprintln!("[WARN] no TLS provider configured");
+            Ok(no_tls(config))
+        }
+    }
+}
+
+cfg_if::cfg_if! {
+if #[cfg(feature = "tls-openssl")] {
+
+use tls_openssl::new_tls;
 
 pub(crate) mod tls_openssl {
     use super::*;
 
-    use openssl::ssl::{SslConnector, SslMethod};
-    use postgres_openssl::MakeTlsConnector;
-    use tokio_postgres::{Client, Config};
+    use openssl::ssl::{SslConnector, SslMethod, SslOptions};
 
-    pub(crate) struct OpensslConnectionProvider {
-        config: Config,
-        tls: MakeTlsConnector,
+    use tokio_postgres::{Client, Config};
+    use postgres_openssl::MakeTlsConnector;
+
+    struct OpensslConnectionProvider {
+        pub(crate) config: Config,
+        pub(crate) tls: MakeTlsConnector,
     }
 
     #[async_trait]
@@ -71,9 +74,11 @@ pub(crate) mod tls_openssl {
         }
     }
 
-    pub fn new(config: Config, ca_file: &str) -> Result<Box<dyn ConnectionProvider>, Error> {
-        let mut builder = SslConnector::builder(SslMethod::tls()).map_err(Error::OpensslError)?;
+    pub fn new_tls(config: Config, ca_file: &str) -> Result<Box<dyn ConnectionProvider>, Error> {
+        let mut builder = SslConnector::builder(SslMethod::tls())
+            .map_err(Error::OpensslError)?;
 
+        builder.set_options(SslOptions::NO_TLSV1_3);
         builder.set_ca_file(ca_file).map_err(Error::OpensslError)?;
 
         Ok(Box::new(OpensslConnectionProvider {
@@ -85,15 +90,20 @@ pub(crate) mod tls_openssl {
 }}
 
 cfg_if::cfg_if! {
-if #[cfg(target_feature = "tls-rustls")] {
+if #[cfg(feature = "tls-rustls")] {
 
-pub(crate) mod tls_rustls {
+use tls_rustls::new_tls;
+
+mod tls_rustls {
     use super::*;
 
-    use rustls;
+    use std::fs::File;
+    use std::io::BufReader;
+
+    use rustls::{ClientConfig, RootCertStore};
     use tokio_postgres_rustls::MakeRustlsConnect;
 
-    pub(crate) struct RustlsConnectionProvider {
+    struct RustlsConnectionProvider {
         config: Config,
         tls: MakeRustlsConnect,
     }
@@ -107,16 +117,20 @@ pub(crate) mod tls_rustls {
         }
     }
 
-    pub fn new(config: Config, ca_file: &str) -> Result<Box<dyn ConnectionProvider>, Error> {
-        let mut tls_conf = rustls::ClientConfig::new();
+    pub fn new_tls(config: Config, ca_file: &str) -> Result<Box<dyn ConnectionProvider>, Error> {
+        let mut tls_conf = ClientConfig::new();
 
-        let file = std::fs::File::open(ca_file).map_err(|err| Error::Other(err.to_string()))?;
-        let reader = BufReader::new(file);
+        let file = File::open(ca_file).map_err(|err| Error::Other(err.to_string()))?;
+        let mut reader = BufReader::new(file);
 
-        let mut root_store = rustls::RootCertStore::empty();
+        let mut root_store = RootCertStore::empty();
         root_store
-            .add_pem_file(reader)
-            .map_err(|| Error::RustlsError("Failed to read certificate file".to_string()))?;
+            .add_pem_file(&mut reader)
+            .map_err(|_| Error::RustlsError("Failed to read certificate file".to_string()))?;
+
+        for root in &root_store.roots {
+            println!("{:?}", root);
+        }
 
         tls_conf.root_store = root_store;
 
