@@ -20,7 +20,7 @@ tokio-postgres = { version="0.5.4", features = ["with-chrono-0_4"]}
 postgres-openssl = "0.3.0"
 mobc = "0.5"
 barrel = { version = "0.6.5", features = ["pg"] }
-refinery = { version = "0.3.0", features = ["tokio-postgres"]}
+refinery = { version = "0.4.0", features = ["tokio-postgres"]}
 openssl = { version = "0.10", features = ["vendored"] }
 
 oxidizer-entity-macro = { version = "0.2.1", path = "../oxidizer-entity-macro" }
