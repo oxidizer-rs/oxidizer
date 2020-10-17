@@ -42,7 +42,7 @@ impl DB {
     pub async fn connect(uri: &str, max_open: u64, ca_file: Option<&str>) -> Result<Self, Error> {
         let config = tokio_postgres::Config::from_str(uri).map_err(Error::PostgresError)?;
 
-        let provider = connections::create_connection_provider(config, ca_file)?;
+        let provider = connections::create_connection_provider(config, ca_file).await?;
         let manager = ConnectionManager { provider };
 
         Ok(DB {

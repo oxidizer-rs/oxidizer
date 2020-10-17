@@ -8,17 +8,17 @@ pub trait ConnectionProvider: Send + Sync + 'static {
     async fn connect(&self) -> Result<Client, tokio_postgres::Error>;
 }
 
-pub fn create_connection_provider(
+pub async fn create_connection_provider(
     config: Config,
     ca_file: Option<&str>,
 ) -> Result<Box<dyn ConnectionProvider>, Error> {
     let prov: Box<dyn ConnectionProvider> = if let Some(ca_file) = ca_file {
         cfg_if::cfg_if! {
-            if #[cfg(feature = "tls-openssl")] {
-                tls_openssl::new_tls(config, ca_file)?
-            } else if #[cfg(feature = "tls-rustls")] {
-                tls_rustls::new_tls(config, ca_file)?
-            }else {
+            if #[cfg(feature = "tls-rustls")] {
+                tls_rustls::create_rustls_provider(config, ca_file).await?
+            } else if #[cfg(feature = "tls-openssl")] {
+                tls_openssl::create_openssl_provider(config, ca_file).await?
+            } else {
                 eprintln!("[WARN] no TLS provider found, reverting to unencrypted connection");
                 no_tls(config)
             }
@@ -51,7 +51,7 @@ fn no_tls(config: Config) -> Box<dyn ConnectionProvider> {
 mod tls_openssl {
     use super::*;
 
-    use openssl::ssl::{SslConnector, SslMethod, SslOptions};
+    use openssl::ssl::{SslConnector, SslMethod};
 
     use postgres_openssl::MakeTlsConnector;
     use tokio_postgres::{Client, Config};
@@ -70,14 +70,25 @@ mod tls_openssl {
         }
     }
 
-    pub fn new_tls(config: Config, ca_file: &str) -> Result<Box<dyn ConnectionProvider>, Error> {
+    fn sync_build_ssl_connector(ca_file: String) -> Result<SslConnector, Error> {
         let mut builder = SslConnector::builder(SslMethod::tls()).map_err(Error::OpensslError)?;
 
-        builder.set_ca_file(ca_file).map_err(Error::OpensslError)?;
+        builder.set_ca_file(&ca_file).map_err(Error::OpensslError)?;
+
+        Ok(builder.build())
+    }
+
+    pub async fn create_openssl_provider(
+        config: Config,
+        ca_file: &str,
+    ) -> Result<Box<dyn ConnectionProvider>, Error> {
+        let file = ca_file.to_string();
+        let connector =
+            tokio::task::spawn_blocking(move || sync_build_ssl_connector(file)).await??;
 
         Ok(Box::new(OpensslConnectionProvider {
             config,
-            tls: MakeTlsConnector::new(builder.build()),
+            tls: MakeTlsConnector::new(connector),
         }))
     }
 }
@@ -106,10 +117,8 @@ mod tls_rustls {
         }
     }
 
-    pub fn new_tls(config: Config, ca_file: &str) -> Result<Box<dyn ConnectionProvider>, Error> {
-        let mut tls_conf = ClientConfig::new();
-
-        let file = File::open(ca_file).map_err(|err| Error::Other(err.to_string()))?;
+    fn sync_initialise_root_store(ca_file: String) -> Result<RootCertStore, Error> {
+        let file = File::open(&ca_file).map_err(|err| Error::Other(err.to_string()))?;
         let mut reader = BufReader::new(file);
 
         let mut root_store = RootCertStore::empty();
@@ -117,7 +126,19 @@ mod tls_rustls {
             .add_pem_file(&mut reader)
             .map_err(|_| Error::RustlsError("Failed to read certificate file".to_string()))?;
 
-        tls_conf.root_store = root_store;
+        Ok(root_store)
+    }
+
+    pub async fn create_rustls_provider(
+        config: Config,
+        ca_file: &str,
+    ) -> Result<Box<dyn ConnectionProvider>, Error> {
+        let mut tls_conf = ClientConfig::new();
+
+        let file = ca_file.to_string();
+        tls_conf.root_store =
+            tokio::task::spawn_blocking(move || sync_initialise_root_store(file)).await??;
+
         Ok(Box::new(RustlsConnectionProvider {
             config,
             tls: MakeRustlsConnect::new(tls_conf),
