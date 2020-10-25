@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use mobc::Manager;
 use mobc::Pool;
-use openssl::ssl::{SslConnector, SslMethod};
-use postgres_openssl::MakeTlsConnector;
+
+use super::connections;
+use connections::ConnectionProvider;
+
 use refinery::{Report, Runner};
 use std::str::FromStr;
 
@@ -10,40 +12,19 @@ use super::super::migration::Migration;
 use super::error::*;
 
 use barrel::backend::Pg;
-use tokio_postgres::{
-    row::Row,
-    tls::{MakeTlsConnect, TlsConnect},
-    types::ToSql,
-    Client, Config, NoTls, Socket,
-};
+use tokio_postgres::{row::Row, types::ToSql, Client};
 
-pub struct ConnectionManager<Tls> {
-    config: Config,
-    tls: Tls,
-}
-
-impl<Tls> ConnectionManager<Tls> {
-    pub fn new(config: Config, tls: Tls) -> Self {
-        Self { config, tls }
-    }
+struct ConnectionManager {
+    provider: Box<dyn ConnectionProvider>,
 }
 
 #[async_trait]
-impl<Tls> Manager for ConnectionManager<Tls>
-where
-    Tls: MakeTlsConnect<Socket> + Clone + Send + Sync + 'static,
-    <Tls as MakeTlsConnect<Socket>>::Stream: Send + Sync,
-    <Tls as MakeTlsConnect<Socket>>::TlsConnect: Send,
-    <<Tls as MakeTlsConnect<Socket>>::TlsConnect as TlsConnect<Socket>>::Future: Send,
-{
+impl Manager for ConnectionManager {
     type Connection = Client;
     type Error = tokio_postgres::Error;
 
     async fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        let tls = self.tls.clone();
-        let (client, conn) = self.config.connect(tls).await?;
-        mobc::spawn(conn);
-        Ok(client)
+        self.provider.connect().await
     }
 
     async fn check(&self, conn: Self::Connection) -> Result<Self::Connection, Self::Error> {
@@ -53,44 +34,20 @@ where
 }
 
 #[derive(Clone)]
-enum ConnectionPool {
-    TLS(Pool<ConnectionManager<MakeTlsConnector>>),
-    NoTLS(Pool<ConnectionManager<NoTls>>),
-}
-
-#[derive(Clone)]
 pub struct DB {
-    pool: ConnectionPool,
+    pool: Pool<ConnectionManager>,
 }
 
 impl DB {
     pub async fn connect(uri: &str, max_open: u64, ca_file: Option<&str>) -> Result<Self, Error> {
-        if let Some(ca_file) = ca_file {
-            let mut builder =
-                SslConnector::builder(SslMethod::tls()).map_err(|err| Error::OpensslError(err))?;
+        let config = tokio_postgres::Config::from_str(uri).map_err(Error::PostgresError)?;
 
-            builder
-                .set_ca_file(ca_file)
-                .map_err(|err| Error::OpensslError(err))?;
+        let provider = connections::create_connection_provider(config, ca_file).await?;
+        let manager = ConnectionManager { provider };
 
-            let connector = MakeTlsConnector::new(builder.build());
-            let config =
-                tokio_postgres::Config::from_str(uri).map_err(|err| Error::PostgresError(err))?;
-            let manager = ConnectionManager::new(config, connector);
-
-            Ok(DB {
-                pool: ConnectionPool::TLS(Pool::builder().max_open(max_open).build(manager)),
-            })
-        } else {
-            let config =
-                tokio_postgres::Config::from_str(uri).map_err(|err| Error::PostgresError(err))?;
-
-            let manager = ConnectionManager::new(config, NoTls);
-
-            Ok(DB {
-                pool: ConnectionPool::NoTLS(Pool::builder().max_open(max_open).build(manager)),
-            })
-        }
+        Ok(DB {
+            pool: Pool::builder().max_open(max_open).build(manager),
+        })
     }
 
     pub async fn create(
@@ -106,34 +63,14 @@ impl DB {
         query: &str,
         params: &'_ [&'_ (dyn ToSql + Sync)],
     ) -> Result<u64, Error> {
-        match &self.pool {
-            ConnectionPool::TLS(pool) => {
-                let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
+        let client = self.pool.get().await.map_err(Error::MobcError)?;
 
-                let insert = client
-                    .prepare(query)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))?;
+        let insert = client.prepare(query).await.map_err(Error::PostgresError)?;
 
-                client
-                    .execute(&insert, params)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))
-            }
-            ConnectionPool::NoTLS(pool) => {
-                let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
-
-                let insert = client
-                    .prepare(query)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))?;
-
-                client
-                    .execute(&insert, params)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))
-            }
-        }
+        client
+            .execute(&insert, params)
+            .await
+            .map_err(Error::PostgresError)
     }
 
     pub async fn query(
@@ -141,34 +78,14 @@ impl DB {
         query: &str,
         params: &'_ [&'_ (dyn ToSql + Sync)],
     ) -> Result<Vec<Row>, Error> {
-        match &self.pool {
-            ConnectionPool::TLS(pool) => {
-                let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
+        let client = self.pool.get().await.map_err(Error::MobcError)?;
 
-                let insert = client
-                    .prepare(query)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))?;
+        let insert = client.prepare(query).await.map_err(Error::PostgresError)?;
 
-                client
-                    .query(&insert, params)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))
-            }
-            ConnectionPool::NoTLS(pool) => {
-                let client = pool.get().await.map_err(|err| Error::MobcError(err))?;
-
-                let insert = client
-                    .prepare(query)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))?;
-
-                client
-                    .query(&insert, params)
-                    .await
-                    .map_err(|err| Error::PostgresError(err))
-            }
-        }
+        client
+            .query(&insert, params)
+            .await
+            .map_err(Error::PostgresError)
     }
 
     pub async fn migrate_tables(&self, ms: &[Migration]) -> Result<Report, Error> {
@@ -194,21 +111,10 @@ impl DB {
 
     pub async fn migrate(&self, runner: Runner) -> Result<Report, Error> {
         let runner = runner.set_abort_divergent(false);
-        match &self.pool {
-            ConnectionPool::TLS(pool) => {
-                let mut client = pool.get().await.map_err(|err| Error::MobcError(err))?;
-                Ok(runner
-                    .run_async(&mut *client)
-                    .await
-                    .map_err(|err| Error::RefineryError(err))?)
-            }
-            ConnectionPool::NoTLS(pool) => {
-                let mut client = pool.get().await.map_err(|err| Error::MobcError(err))?;
-                Ok(runner
-                    .run_async(&mut *client)
-                    .await
-                    .map_err(|err| Error::RefineryError(err))?)
-            }
-        }
+        let mut client = self.pool.get().await.map_err(Error::MobcError)?;
+        Ok(runner
+            .run_async(&mut *client)
+            .await
+            .map_err(Error::RefineryError)?)
     }
 }

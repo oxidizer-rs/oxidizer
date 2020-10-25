@@ -12,15 +12,25 @@ license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["tls-openssl"]
+tls-openssl = ["openssl", "postgres-openssl"]
+tls-rustls = ["rustls", "tokio-postgres-rustls"]
+
 [dependencies]
 chrono = "0.4.19"
 async-trait = "0.1.41"
 tokio = { version = "0.2", features = ["full"] }
-tokio-postgres = { version="0.5.4", features = ["with-chrono-0_4"]}
-postgres-openssl = "0.3.0"
+tokio-postgres = { version= "0.5.4", features = ["with-chrono-0_4"]}
 mobc = "0.5"
 barrel = { version = "0.6.5", features = ["pg"] }
 refinery = { version = "0.4.0", features = ["tokio-postgres"]}
-openssl = { version = "0.10", features = ["vendored"] }
+cfg-if = "0.1.10"
+
+openssl = { version = "0.10", features = ["vendored"] , optional = true}
+postgres-openssl = { version = "0.3.0",   optional = true}
+
+rustls = { version = "0.18.0",  optional = true}
+tokio-postgres-rustls = { version = "0.5.0", optional = true}
 
 oxidizer-entity-macro = { version = "0.2.1", path = "../oxidizer-entity-macro" }

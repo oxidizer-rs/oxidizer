@@ -1,3 +1,4 @@
+mod connections;
 pub mod db;
 pub use db::DB;
 pub mod error;
