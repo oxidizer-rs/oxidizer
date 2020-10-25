@@ -766,16 +766,15 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 
 [[package]]
 name = "postgres-openssl"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f10ea2d77c744e1846d03b58362679e51c6647acf0e6a65a1f1e5f0d5e99387"
+checksum = "63edda36df2bf516f0dc0121c491212229e1902a24f7dd9780b84519295e7d59"
 dependencies = [
- "bytes 0.5.6",
  "futures",
  "openssl",
- "tokio 0.2.22",
+ "tokio 0.3.1",
  "tokio-openssl",
- "tokio-postgres 0.5.5",
+ "tokio-postgres 0.6.0",
 ]
 
 [[package]]
@@ -1173,12 +1172,13 @@ dependencies = [
 
 [[package]]
 name = "tokio-openssl"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c4b08c5f4208e699ede3df2520aca2e82401b2de33f45e96696a074480be594"
+checksum = "d01e5cc2d3a154fa310982d0affaec8140d6476805422265b2f648eb813f937f"
 dependencies = [
  "openssl",
- "tokio 0.2.22",
+ "openssl-sys",
+ "tokio 0.3.1",
 ]
 
 [[package]]
