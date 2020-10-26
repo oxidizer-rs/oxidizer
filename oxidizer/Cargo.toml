@@ -25,7 +25,7 @@ tokio-postgres = { version="0.6.0", features = ["with-chrono-0_4"]}
 mobc = "0.5"
 barrel = { version = "0.6.5", features = ["pg"] }
 refinery = { version = "0.4.0", features = ["tokio-postgres"]}
-cfg-if = "0.1.10"
+cfg-if = "1.0.0"
 
 # openssl deps
 openssl = { version = "0.10", features = ["vendored"] , optional = true}
