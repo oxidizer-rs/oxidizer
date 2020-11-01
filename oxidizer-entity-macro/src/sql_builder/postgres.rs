@@ -9,6 +9,7 @@ use crate::attrs::HasManyAttr;
 use crate::attrs::{EntityAttr, IndexAttr, RelationAttr};
 use crate::field_extras::*;
 use crate::props::*;
+use crate::utils::is_integer_type;
 
 use super::Builder;
 
@@ -27,12 +28,27 @@ impl Builder for PostgresBuilder {
         let mut current_index = 1;
         let fields_query_values = props
             .get_fields_all()
-            .map(|field| match field.is_increments() {
-                true => "DEFAULT".to_string(),
-                false => {
-                    let v = current_index;
-                    current_index += 1;
-                    format!("${}", v)
+            .map(|field| {
+                let v = current_index;
+                current_index += 1;
+
+                match field.parse_primary_key().is_some() && field.is_increments() {
+                    true => {
+                        let bigserial_types = vec!["i64"];
+                        let cast = match bigserial_types.contains(&is_integer_type(&field.ty).1) {
+                            true => "int8",
+                            false => "int4",
+                        };
+
+                        format!(
+                            "COALESCE(${}, CAST(nextval(pg_get_serial_sequence('{}', '{}')) AS {}))",
+                            v,
+                            table_name,
+                            field.ident.as_ref().unwrap().to_string(),
+                            cast,
+                        )
+                    }
+                    false => format!("${}", v),
                 }
             })
             .collect::<Vec<String>>()
@@ -43,9 +59,9 @@ impl Builder for PostgresBuilder {
         let fields_plain_to_set: Vec<TokenStream2> = props
             .get_fields_all()
             .filter_map(|field| {
-                if field.is_increments() {
-                    return None;
-                }
+                //if field.is_increments() {
+                //return None;
+                //}
 
                 current_index += 1;
 

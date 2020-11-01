@@ -1,7 +1,16 @@
-use crate as oxidizer;
-use oxidizer::*;
+use super::*;
+
+mod oxidizer {
+    pub use crate::*;
+}
 
 use chrono::{DateTime, Utc};
+
+#[derive(Entity, Default)]
+struct TestPKNoIncrements {
+    #[primary_key()]
+    id: i32,
+}
 
 #[derive(Entity, Default)]
 pub struct TestEntity {
@@ -217,6 +226,31 @@ async fn test_entity_macro_save() {
 
     let creating = obj.save(&db).await.unwrap();
     assert_eq!(creating, false);
+}
+
+#[tokio::test]
+async fn test_entity_macro_save_update() {
+    let db = super::db::test_utils::create_test_db("test_entity_macro_save_update").await;
+
+    db.migrate_tables(&[TestEntity::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestEntity::default();
+    obj.integer = 42;
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+    assert_eq!(obj.id, 1);
+
+    let mut obj2 = TestEntity::first(&db, "integer = $1", &[&obj.integer])
+        .await
+        .unwrap()
+        .unwrap();
+
+    obj2.integer = 43;
+    let creating = obj2.save(&db).await.unwrap();
+    assert_eq!(creating, false);
+    assert_eq!(obj2.id, 1);
 }
 
 #[tokio::test]
@@ -713,4 +747,23 @@ async fn test_custom_primary_key() {
         .unwrap()
         .unwrap();
     assert_eq!(result.email, obj.email);
+}
+
+#[tokio::test]
+async fn test_pk_no_increments() {
+    let db = super::db::test_utils::create_test_db("test_pk_no_increments").await;
+
+    db.migrate_tables(&[TestPKNoIncrements::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestPKNoIncrements::default();
+    obj.id = 1;
+    obj.save(&db).await.unwrap();
+
+    obj.id = 2;
+    obj.save(&db).await.unwrap();
+
+    let results = TestPKNoIncrements::find(&db, "true", &[]).await.unwrap();
+    assert_eq!(results.len(), 2);
 }

@@ -155,15 +155,29 @@ impl Props {
             ));
         }
 
+        // checks auto-increments
         for field in self.get_fields_all() {
             if !field.is_increments() {
                 continue;
             }
 
-            if !is_integer_type(&field.ty) {
-                return Some(TokenStream::from(
-                    quote_spanned! { field.ty.span() => compile_error!("Increments can only be used with integer types") },
-                ));
+            if field.parse_primary_key().is_none() {
+                return Some(TokenStream::from(quote_spanned! {
+                    field.ty.span() => compile_error!(
+                        "Increments can only be used with primary keys for now"
+                    )
+                }));
+            }
+
+            let allowed_increments_types = vec!["i32"];
+
+            let (check, ty) = is_integer_type(&field.ty);
+            if !check || !allowed_increments_types.contains(&ty) {
+                return Some(TokenStream::from(quote_spanned! {
+                    field.ty.span() => compile_error!(
+                        "Increments can only be used with integer types: 'i32'"
+                    )
+                }));
             }
         }
 

@@ -109,7 +109,9 @@ pub fn search_attr_in_field(field: &Field, attr: &str) -> bool {
     return false;
 }
 
-pub fn is_integer_type(ty: &Type) -> bool {
+/// is_integer_type returns tuple indicating whether the type is an integer type and the type
+/// itself cast to string
+pub fn is_integer_type(ty: &Type) -> (bool, &str) {
     let segments = match ty {
         syn::Type::Path(TypePath {
             path: Path { segments, .. },
@@ -118,12 +120,13 @@ pub fn is_integer_type(ty: &Type) -> bool {
         _ => unimplemented!(),
     };
     match segments.first().unwrap() {
-        PathSegment { ident, .. } if ident.to_string() == "i8" => true,
-        PathSegment { ident, .. } if ident.to_string() == "i16" => true,
-        PathSegment { ident, .. } if ident.to_string() == "i32" => true,
-        PathSegment { ident, .. } if ident.to_string() == "u32" => true,
-        PathSegment { ident, .. } if ident.to_string() == "i64" => true,
-        _ => false,
+        PathSegment { ident, .. } if ident.to_string() == "i8" => (true, "i8"),
+        PathSegment { ident, .. } if ident.to_string() == "i16" => (true, "i16"),
+        PathSegment { ident, .. } if ident.to_string() == "i32" => (true, "i32"),
+        PathSegment { ident, .. } if ident.to_string() == "i64" => (true, "i64"),
+        PathSegment { ident, .. } if ident.to_string() == "u32" => (true, "u32"),
+        PathSegment { ident, .. } if ident.to_string() == "u64" => (true, "u64"),
+        _ => (false, ""),
     }
 }
 

@@ -23,7 +23,6 @@ impl EntityBuilder {
 
         let fields_value_acessors: Vec<TokenStream2> = props
             .get_fields_all()
-            .filter(|field| !field.is_increments())
             .map(|field| {
                 let name = &field.ident;
                 if let Some(ct) = field.parse_custom_type() {
@@ -32,6 +31,13 @@ impl EntityBuilder {
                     let ty_ident = format_ident!("{}", ty);
 
                     return quote! { &<#ty_ident>::try_from(&self.#name)? };
+                }
+
+                if field.parse_primary_key().is_some() && field.is_increments() {
+                    let ty = &field.ty;
+                    return quote! {
+                        &match self.#name { v if v == <#ty>::default() => None, _ => Some(self.#name) }
+                    };
                 }
 
                 quote! { &self.#name }
@@ -56,8 +62,11 @@ impl EntityBuilder {
                     query,
                     &[#( #fields_value_acessors ),*]
                 ).await?;
-                let first_row = rows.first().ok_or(oxidizer::db::Error::Other("Error while saving entity".to_string()))?;
-                self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
+                if let Some(first_row) = rows.first()  {
+                    self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
+                } else if creating {
+                   return Err(oxidizer::db::Error::Other("Error while saving entity".to_string()));
+                }
 
                 Ok(creating)
             }

@@ -3,7 +3,7 @@ use darling::FromMeta;
 #[derive(Debug, FromMeta)]
 pub struct PrimaryKeyAttr {
     #[darling(default)]
-    pub increments: bool,
+    pub increments: Option<bool>,
 }
 
 #[derive(Debug, FromMeta)]

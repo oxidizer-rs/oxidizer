@@ -1,12 +1,12 @@
 use darling::FromMeta;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote, quote_spanned};
-use syn::{spanned::Spanned, Field, Meta, Path, PathSegment, Type, TypePath};
+use syn::{spanned::Spanned, Field, Type};
 
 use super::attrs::{CustomTypeAttr, PrimaryKeyAttr, RelationAttr};
 use super::utils::search_attr_in_field;
 use super::utils::type_to_db_type;
-use super::utils::{check_type_order, iterate_path_arguments};
+use super::utils::{check_type_order, is_integer_type};
 
 pub trait FieldExtras {
     fn is_indexed(&self) -> bool;
@@ -31,7 +31,10 @@ impl FieldExtras for Field {
 
     fn is_increments(&self) -> bool {
         if let Some(attr) = self.parse_primary_key() {
-            return attr.increments;
+            return match attr.increments.as_ref() {
+                Some(v) => *v,
+                None => false,
+            };
         }
 
         search_attr_in_field(self, "increments")
@@ -93,7 +96,13 @@ impl FieldExtras for Field {
 
     fn get_db_type(&self) -> TokenStream2 {
         if self.is_increments() {
-            return quote! { oxidizer::types::custom("SERIAL") };
+            let bigserial_types = vec!["i64"];
+            // TODO CURRENTLY BARREL ONLY SUPPORTS INTEGER (INT4) FOREIGN KEY TYPES
+            let ty = match bigserial_types.contains(&is_integer_type(&self.ty).1) {
+                true => "SERIAL",
+                false => "SERIAL",
+            };
+            return quote! { oxidizer::types::custom(#ty) };
         }
 
         if let Some(relation) = self.parse_relation() {
