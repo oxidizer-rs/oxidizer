@@ -38,7 +38,7 @@ pub struct DB {
     pool: Pool<ConnectionManager>,
 }
 
-impl std::marker::Sync for DB {}
+unsafe impl std::marker::Sync for DB {}
 
 impl DB {
     pub async fn connect(uri: &str, max_open: u64, ca_file: Option<&str>) -> Result<Self, Error> {
