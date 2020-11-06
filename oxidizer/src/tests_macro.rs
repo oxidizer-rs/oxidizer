@@ -189,6 +189,23 @@ pub struct TestCustomPrimaryKey {
     email: String,
 }
 
+#[derive(Entity, Default)]
+pub struct TestIndexedField {
+    #[primary_key(increments)]
+    pub id: i32,
+    pub display_name: String,
+
+    #[indexed]
+    pub email: String,
+}
+
+#[derive(Entity, Default)]
+pub struct User {
+    #[primary_key(increments)]
+    pub id: i32,
+    pub display_name: String,
+}
+
 #[tokio::test]
 async fn test_entity_macro_clean() {
     let _obj = TestEntity {
@@ -766,4 +783,45 @@ async fn test_pk_no_increments() {
 
     let results = TestPKNoIncrements::find(&db, "true", &[]).await.unwrap();
     assert_eq!(results.len(), 2);
+}
+
+#[tokio::test]
+async fn test_indexed_field() {
+    let db = super::db::test_utils::create_test_db("test_indexed_field").await;
+
+    db.migrate_tables(&[TestIndexedField::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestIndexedField::default();
+    obj.id = 12345;
+    obj.display_name = "test".to_string();
+
+    obj.save(&db).await.unwrap();
+
+    let obj2 = TestIndexedField::first(&db, "id = 12345", &[])
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(obj.display_name, obj2.display_name);
+}
+
+#[tokio::test]
+async fn test_reserved_table_names() {
+    let db = super::db::test_utils::create_test_db("test_reserved_table_names").await;
+
+    db.migrate_tables(&[User::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = User::default();
+    obj.id = 12345;
+    obj.display_name = "test".to_string();
+
+    obj.save(&db).await.unwrap();
+
+    let obj2 = User::first(&db, "id = 12345", &[]).await.unwrap().unwrap();
+
+    assert_eq!(obj.display_name, obj2.display_name);
 }

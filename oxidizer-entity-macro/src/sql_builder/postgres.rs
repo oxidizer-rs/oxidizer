@@ -92,7 +92,7 @@ impl Builder for PostgresBuilder {
         let primary_key_ident = &primary_key.ident;
 
         quote! {
-            let query = concat!("INSERT INTO ", #table_name,
+            let query = concat!("INSERT INTO \"", #table_name, "\"",
                 " (", stringify!(#(#fields_ident),*),
                 ") values (", #fields_query_values,
                 ") ON CONFLICT (", stringify!(#primary_key_ident), ") DO ", #on_conflict_do,
@@ -104,14 +104,14 @@ impl Builder for PostgresBuilder {
     fn build_find_query(props: &Props) -> TokenStream2 {
         let table_name = props.get_table_name();
         quote! {
-            let query = format!("SELECT * FROM {} WHERE {}", #table_name, condition)
+            let query = format!("SELECT * FROM \"{}\" WHERE {}", #table_name, condition)
         }
     }
 
     fn build_first_query(props: &Props) -> TokenStream2 {
         let table_name = props.get_table_name();
         quote! {
-            let query = format!("SELECT * FROM {} WHERE {} LIMIT 1", #table_name, condition);
+            let query = format!("SELECT * FROM \"{}\" WHERE {} LIMIT 1", #table_name, condition);
         }
     }
 
@@ -120,7 +120,7 @@ impl Builder for PostgresBuilder {
         let table_name = props.get_table_name();
         quote! {
             let condition = format!("{} = $1", stringify!(#primary_key_ident));
-            let query = format!("DELETE FROM {} WHERE {}", #table_name, condition);
+            let query = format!("DELETE FROM \"{}\" WHERE {}", #table_name, condition);
         }
     }
 
@@ -130,7 +130,7 @@ impl Builder for PostgresBuilder {
 
         quote! {
             let table_name = <#model>::get_table_name();
-            let query = format!("select * from {} where {} = $1 limit 1", &table_name, stringify!(#key));
+            let query = format!("select * from \"{}\" where {} = $1 limit 1", &table_name, stringify!(#key));
         }
     }
 
