@@ -151,56 +151,56 @@ pub fn type_to_db_type(ty: &Type) -> TokenStream {
             quote! { oxidizer::types::custom("char") }
         }
         segment if is_typed_with(segment, vec!["Option", "i8"]) => {
-            quote! { oxidizer::types::text() }
+            quote! { oxidizer::types::custom("char") }
         }
 
         PathSegment { ident, .. } if ident.to_string() == "i16" => {
             quote! { oxidizer::types::custom("SMALLINT") }
         }
         segment if is_typed_with(segment, vec!["Option", "i16"]) => {
-            quote! { oxidizer::types::text() }
+            quote! { oxidizer::types::custom("SMALLINT") }
         }
 
         PathSegment { ident, .. } if ident.to_string() == "i32" => {
             quote! { oxidizer::types::integer() }
         }
         segment if is_typed_with(segment, vec!["Option", "i32"]) => {
-            quote! { oxidizer::types::text() }
+            quote! { oxidizer::types::integer() }
         }
 
         PathSegment { ident, .. } if ident.to_string() == "u32" => {
             quote! { oxidizer::types::custom("OID") }
         }
         segment if is_typed_with(segment, vec!["Option", "u32"]) => {
-            quote! { oxidizer::types::text() }
+            quote! { oxidizer::types::custom("OID") }
         }
 
         PathSegment { ident, .. } if ident.to_string() == "i64" => {
             quote! { oxidizer::types::custom("BIGINT") }
         }
         segment if is_typed_with(segment, vec!["Option", "i64"]) => {
-            quote! { oxidizer::types::text() }
+            quote! { oxidizer::types::custom("BIGINT") }
         }
 
         PathSegment { ident, .. } if ident.to_string() == "f32" => {
             quote! { oxidizer::types::custom("REAL") }
         }
         segment if is_typed_with(segment, vec!["Option", "f32"]) => {
-            quote! { oxidizer::types::text() }
+            quote! { oxidizer::types::custom("REAL") }
         }
 
         PathSegment { ident, .. } if ident.to_string() == "f64" => {
             quote! { oxidizer::types::custom("DOUBLE PRECISION") }
         }
         segment if is_typed_with(segment, vec!["Option", "f64"]) => {
-            quote! { oxidizer::types::text() }
+            quote! { oxidizer::types::custom("DOUBLE PRECISION") }
         }
 
         PathSegment { ident, .. } if ident.to_string() == "bool" => {
             quote! { oxidizer::types::boolean() }
         }
         segment if is_typed_with(segment, vec!["Option", "bool"]) => {
-            quote! { oxidizer::types::text() }
+            quote! { oxidizer::types::boolean() }
         }
 
         segment if is_chrono_option(segment) => {

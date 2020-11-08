@@ -172,12 +172,43 @@ impl std::convert::TryFrom<i32> for MyEnum {
     }
 }
 
+impl std::convert::TryFrom<&MyEnum> for String {
+    type Error = ConvertError;
+
+    fn try_from(v: &MyEnum) -> Result<Self, Self::Error> {
+        match v {
+            MyEnum::Item1 => Ok("item1".into()),
+            MyEnum::Item2 => Ok("item2".into()),
+        }
+    }
+}
+
+impl std::convert::TryFrom<String> for MyEnum {
+    type Error = ConvertError;
+
+    fn try_from(v: String) -> Result<Self, Self::Error> {
+        match v.as_str() {
+            "item1" => Ok(MyEnum::Item1),
+            "item2" => Ok(MyEnum::Item2),
+            _ => Err(ConvertError::Error),
+        }
+    }
+}
 #[derive(Entity, Default)]
 pub struct TestCustomType {
     #[primary_key(increments)]
     id: i32,
 
     #[custom_type(ty = "i32")]
+    my_enum: MyEnum,
+}
+
+#[derive(Entity, Default)]
+pub struct TestCustomType2 {
+    #[primary_key(increments)]
+    id: i32,
+
+    #[custom_type(ty = "String")]
     my_enum: MyEnum,
 }
 
@@ -718,6 +749,29 @@ async fn test_entity_custom_type_error() {
 
     let result = TestCustomType::first(&db, "id = $1", &[&obj.id]).await;
     assert_eq!(true, result.is_ok());
+}
+
+#[tokio::test]
+async fn test_entity_custom_type_2() {
+    let db = super::db::test_utils::create_test_db("test_entity_custom_type_2").await;
+
+    db.migrate_tables(&[TestCustomType2::create_migration().unwrap()])
+        .await
+        .unwrap();
+
+    let mut obj = TestCustomType2::default();
+    obj.my_enum = MyEnum::Item2;
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, true);
+
+    let creating = obj.save(&db).await.unwrap();
+    assert_eq!(creating, false);
+
+    let result = TestCustomType2::first(&db, "id = $1", &[&obj.id])
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.my_enum, MyEnum::Item2);
 }
 
 #[tokio::test]
