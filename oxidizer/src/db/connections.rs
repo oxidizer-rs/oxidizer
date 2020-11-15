@@ -1,7 +1,27 @@
 use async_trait::async_trait;
+use mobc::Manager;
 use tokio_postgres::{Client, Config, NoTls};
 
 use crate::Error;
+
+pub(crate) struct ConnectionManager {
+    pub provider: Box<dyn ConnectionProvider>,
+}
+
+#[async_trait]
+impl Manager for ConnectionManager {
+    type Connection = Client;
+    type Error = tokio_postgres::Error;
+
+    async fn connect(&self) -> Result<Self::Connection, Self::Error> {
+        self.provider.connect().await
+    }
+
+    async fn check(&self, conn: Self::Connection) -> Result<Self::Connection, Self::Error> {
+        conn.simple_query("").await?;
+        Ok(conn)
+    }
+}
 
 #[async_trait]
 pub trait ConnectionProvider: Send + Sync + 'static {

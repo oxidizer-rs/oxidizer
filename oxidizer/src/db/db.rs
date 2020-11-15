@@ -1,37 +1,16 @@
 use async_trait::async_trait;
-use mobc::Manager;
-use mobc::Pool;
-
-use super::connections;
-use connections::ConnectionProvider;
-
-use refinery::{Report, Runner};
-use std::str::FromStr;
-
-use super::super::migration::Migration;
-use super::error::*;
-
 use barrel::backend::Pg;
+use mobc::Pool;
+use refinery::{Report, Runner};
+use std::future::Future;
+use std::str::FromStr;
 use tokio_postgres::{row::Row, types::ToSql, Client};
 
-struct ConnectionManager {
-    provider: Box<dyn ConnectionProvider>,
-}
-
-#[async_trait]
-impl Manager for ConnectionManager {
-    type Connection = Client;
-    type Error = tokio_postgres::Error;
-
-    async fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        self.provider.connect().await
-    }
-
-    async fn check(&self, conn: Self::Connection) -> Result<Self::Connection, Self::Error> {
-        conn.simple_query("").await?;
-        Ok(conn)
-    }
-}
+use super::super::migration::Migration;
+use super::connections::{self, *};
+use super::error::*;
+use super::generic_client::GenericClient;
+use super::transaction::Transaction;
 
 #[derive(Clone)]
 pub struct DB {
@@ -60,34 +39,27 @@ impl DB {
         self.execute(query, params).await
     }
 
-    pub async fn execute(
-        &self,
-        query: &str,
-        params: &'_ [&'_ (dyn ToSql + Sync)],
-    ) -> Result<u64, Error> {
-        let client = self.pool.get().await.map_err(Error::MobcError)?;
+    pub async fn with_transaction<'a, T, F, Fut>(&self, cb: F) -> Result<T, Error>
+    where
+        F: FnOnce(&Transaction) -> Fut,
+        Fut: Future<Output = Result<T, Error>>,
+    {
+        let mut client = self.pool.get().await.map_err(Error::MobcError)?;
 
-        let insert = client.prepare(query).await.map_err(Error::PostgresError)?;
+        let transaction = Transaction::new(&mut client).await?;
 
-        client
-            .execute(&insert, params)
-            .await
-            .map_err(Error::PostgresError)
-    }
+        let res = cb(&transaction).await;
 
-    pub async fn query(
-        &self,
-        query: &str,
-        params: &'_ [&'_ (dyn ToSql + Sync)],
-    ) -> Result<Vec<Row>, Error> {
-        let client = self.pool.get().await.map_err(Error::MobcError)?;
-
-        let insert = client.prepare(query).await.map_err(Error::PostgresError)?;
-
-        client
-            .query(&insert, params)
-            .await
-            .map_err(Error::PostgresError)
+        match res {
+            Ok(r) => {
+                transaction.commit().await?;
+                Ok(r)
+            }
+            Err(err) => {
+                transaction.rollback().await?;
+                Err(err)
+            }
+        }
     }
 
     pub async fn migrate_tables(&self, ms: &[Migration]) -> Result<Report, Error> {
@@ -118,5 +90,38 @@ impl DB {
             .run_async(&mut *client)
             .await
             .map_err(Error::RefineryError)?)
+    }
+}
+
+#[async_trait]
+impl GenericClient for DB {
+    async fn execute(
+        &self,
+        query: &str,
+        params: &'_ [&'_ (dyn ToSql + Sync)],
+    ) -> Result<u64, Error> {
+        let client = self.pool.get().await.map_err(Error::MobcError)?;
+
+        let insert = client.prepare(query).await.map_err(Error::PostgresError)?;
+
+        client
+            .execute(&insert, params)
+            .await
+            .map_err(Error::PostgresError)
+    }
+
+    async fn query(
+        &self,
+        query: &str,
+        params: &'_ [&'_ (dyn ToSql + Sync)],
+    ) -> Result<Vec<Row>, Error> {
+        let client = self.pool.get().await.map_err(Error::MobcError)?;
+
+        let insert = client.prepare(query).await.map_err(Error::PostgresError)?;
+
+        client
+            .query(&insert, params)
+            .await
+            .map_err(Error::PostgresError)
     }
 }

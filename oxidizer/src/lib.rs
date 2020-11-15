@@ -337,6 +337,9 @@ pub use oxidizer_entity_macro::*;
 mod tests_macro;
 
 #[cfg(test)]
+mod tests_transactions;
+
+#[cfg(test)]
 mod migrations;
 
 pub use std::convert::TryFrom;

@@ -49,7 +49,7 @@ impl EntityBuilder {
         let primary_key_type = &primary_key.ty;
 
         quote! {
-            async fn save(&mut self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<bool> {
+            async fn save(&mut self, db: &impl oxidizer::GenericClient) -> oxidizer::db::DBResult<bool> {
                 let mut creating = false;
                 let primary_key_default: #primary_key_type = Default::default();
 
@@ -170,7 +170,7 @@ impl EntityBuilder {
         let name = props.get_name();
         let query = DefaultBuilder::build_find_query(props);
         quote! {
-            async fn find(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<Vec<#name>> {
+            async fn find(db: &impl oxidizer::GenericClient, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<Vec<#name>> {
                 #query;
                 let rows = db.query(&query, params).await?;
 
@@ -189,7 +189,7 @@ impl EntityBuilder {
         let name = props.get_name();
         let query = DefaultBuilder::build_first_query(props);
         quote! {
-            async fn first(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<std::option::Option<#name>> {
+            async fn first(db: &impl oxidizer::GenericClient, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<std::option::Option<#name>> {
                 #query;
                 let rows = db.query(&query, params).await?;
 
@@ -211,7 +211,7 @@ impl EntityBuilder {
         let primary_key_type = &props.get_primary_key_field().unwrap().ty;
         let query = DefaultBuilder::build_delete_query(props);
         quote! {
-            async fn delete(&mut self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<bool> {
+            async fn delete(&mut self, db: &impl oxidizer::GenericClient) -> oxidizer::db::DBResult<bool> {
                 let key_default: #primary_key_type = Default::default();
                 if self.#primary_key_ident == key_default {
                     return Ok(false);
@@ -270,13 +270,13 @@ impl EntityBuilder {
             quote! {
                 #[oxidizer::async_trait]
                 pub trait #trait_ident {
-                    async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<#model>;
-                    async fn #set_ident(&mut self, db: &oxidizer::db::DB, v: &#model) -> oxidizer::db::DBResult<()>;
+                    async fn #get_ident(&self, db: &impl oxidizer::GenericClient) -> oxidizer::db::DBResult<#model>;
+                    async fn #set_ident(&mut self, db: &impl oxidizer::GenericClient, v: &#model) -> oxidizer::db::DBResult<()>;
                 }
 
                 #[oxidizer::async_trait]
                 impl #trait_ident for #name {
-                    async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<#model> {
+                    async fn #get_ident(&self, db: &impl oxidizer::GenericClient) -> oxidizer::db::DBResult<#model> {
                         if self.#local_key == <#local_key_type>::default() {
                             return Err(oxidizer::db::Error::DoesNotExist);
                         }
@@ -291,7 +291,7 @@ impl EntityBuilder {
                         #model::from_row(&results[0])
                     }
 
-                    async fn #set_ident(&mut self, db: &oxidizer::db::DB, v: &#model) -> oxidizer::db::DBResult<()> {
+                    async fn #set_ident(&mut self, db: &impl oxidizer::GenericClient, v: &#model) -> oxidizer::db::DBResult<()> {
                         if !v.is_synced_with_db() {
                             return Err(oxidizer::db::Error::ReferencedModelIsNotInDB);
                         }
@@ -327,12 +327,12 @@ impl EntityBuilder {
             quote! {
                 #[oxidizer::async_trait]
                 pub trait #trait_ident {
-                    async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<Vec<#model>>;
+                    async fn #get_ident(&self, db: &impl oxidizer::GenericClient) -> oxidizer::db::DBResult<Vec<#model>>;
                 }
 
                 #[oxidizer::async_trait]
                 impl #trait_ident for #name {
-                    async fn #get_ident(&self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<Vec<#model>> {
+                    async fn #get_ident(&self, db: &impl oxidizer::GenericClient) -> oxidizer::db::DBResult<Vec<#model>> {
 
                         #query;
 

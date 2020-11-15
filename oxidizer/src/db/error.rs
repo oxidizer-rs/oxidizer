@@ -11,6 +11,8 @@ pub enum Error {
     DoesNotExist,
     ReferencedModelIsNotInDB,
     Other(String),
+
+    TransactionError(String),
 }
 
 pub type DBResult<T> = std::result::Result<T, Error>;
