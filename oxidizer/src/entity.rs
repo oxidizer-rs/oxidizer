@@ -1,8 +1,8 @@
-use tokio_postgres::Row;
+use sqlx::any::AnyArguments;
+use sqlx::any::AnyRow;
 
 use super::async_trait;
 use super::db::{DBResult, DB};
-use super::db_types::ToSql;
 use super::migration::Migration;
 
 /// Trait implemented by all derived Entitities
@@ -13,18 +13,18 @@ pub trait IEntity: Sized {
 
     fn is_synced_with_db(&self) -> bool;
 
-    fn from_row(row: &Row) -> DBResult<Self>;
+    fn from_row(row: &AnyRow) -> DBResult<Self>;
     fn create_migration() -> DBResult<Migration>;
     fn get_table_name() -> String;
 
-    async fn find(
+    async fn find<'a>(
         db: &DB,
         query: &str,
-        params: &'_ [&'_ (dyn ToSql + Sync)],
+        arguments: AnyArguments<'a>,
     ) -> DBResult<Vec<Self>>;
-    async fn first(
+    async fn first<'a>(
         db: &DB,
         query: &str,
-        params: &'_ [&'_ (dyn ToSql + Sync)],
+        arguments: AnyArguments<'a>,
     ) -> DBResult<Option<Self>>;
 }

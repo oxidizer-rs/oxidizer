@@ -326,8 +326,8 @@ pub mod migration;
 
 /// Re-export of [async_trait::async_trait](https://crates.io/crates/async-trait)
 pub use async_trait::async_trait;
-pub use tokio_postgres;
-pub use tokio_postgres::types as db_types;
+
+pub use sqlx;
 
 pub use barrel::types;
 

@@ -31,7 +31,7 @@ impl EntityBuilder {
 
                     let ty_ident = format_ident!("{}", ty);
 
-                    return quote! { &<#ty_ident>::try_from(&self.#name)? };
+                    return quote! { <#ty_ident>::try_from(&self.#name)? };
                 }
 
                 quote! { &self.#name }
@@ -54,7 +54,7 @@ impl EntityBuilder {
                 #query;
                 let rows = db.query(
                     query,
-                    &[#( #fields_value_acessors ),*]
+                    args![#( #fields_value_acessors ),*]
                 ).await?;
                 let first_row = rows.first().ok_or(oxidizer::db::Error::Other("Error while saving entity".to_string()))?;
                 self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
@@ -95,7 +95,8 @@ impl EntityBuilder {
             props.get_ignored_fields().map(|field| &field.ty).collect();
 
         quote! {
-            fn from_row(row: &oxidizer::tokio_postgres::Row) -> oxidizer::db::DBResult<Self> {
+            fn from_row(row: &oxidizer::sqlx::any::AnyRow) -> oxidizer::db::DBResult<Self> {
+                use oxidizer::sqlx::Row;
                 let mut obj: Self = Self{
                     #( #fields_all_loaders )*
                     #(
@@ -161,9 +162,9 @@ impl EntityBuilder {
         let name = props.get_name();
         let query = DefaultBuilder::build_find_query(props);
         quote! {
-            async fn find(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<Vec<#name>> {
+            async fn find<'a>(db: &oxidizer::db::DB, condition: &str, arguments: oxidizer::sqlx::any::AnyArguments<'a>) -> oxidizer::db::DBResult<Vec<#name>> {
                 #query;
-                let rows = db.query(&query, params).await?;
+                let rows = db.query(&query, arguments).await?;
 
                 let mut results: Vec<#name> = Vec::with_capacity(rows.len());
 
@@ -180,9 +181,9 @@ impl EntityBuilder {
         let name = props.get_name();
         let query = DefaultBuilder::build_first_query(props);
         quote! {
-            async fn first(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<std::option::Option<#name>> {
+            async fn first<'a>(db: &oxidizer::db::DB, condition: &str, arguments: oxidizer::sqlx::any::AnyArguments<'a>) -> oxidizer::db::DBResult<std::option::Option<#name>> {
                 #query;
-                let rows = db.query(&query, params).await?;
+                let rows = db.query(&query, arguments).await?;
 
                 let mut results: Vec<#name> = Vec::with_capacity(rows.len());
                 for row in rows.iter() {
@@ -210,7 +211,7 @@ impl EntityBuilder {
 
                 #query;
 
-                match db.execute(&query, &[&self.#primary_key_ident]).await? {
+                match db.execute(&query, args![self.#primary_key_ident]).await? {
                     0 => Ok(false),
                     _ => {
                         self.#primary_key_ident = key_default;
@@ -274,7 +275,7 @@ impl EntityBuilder {
 
                         #query;
 
-                        let results = db.query(&query, &[&self.#local_key]).await?;
+                        let results = db.query(&query, args![self.#local_key]).await?;
                         if results.len() == 0 {
                             return Err(oxidizer::db::Error::DoesNotExist);
                         }
