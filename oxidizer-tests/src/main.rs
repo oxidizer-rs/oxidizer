@@ -1,6 +1,7 @@
 use oxidizer::*;
+use sqlx::prelude::*;
 
-// mod tmp;
+//mod tmp;
 
 #[derive(Entity, Default)]
 pub struct TestCustomPrimaryKey {

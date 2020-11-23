@@ -57,7 +57,7 @@ impl EntityBuilder {
                     args![#( #fields_value_acessors ),*]
                 ).await?;
                 let first_row = rows.first().ok_or(oxidizer::db::Error::Other("Error while saving entity".to_string()))?;
-                self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
+                self.#primary_key_ident = first_row.get::<#primary_key_type, &str>(stringify!(#primary_key_ident));
 
                 Ok(creating)
             }
@@ -82,7 +82,7 @@ impl EntityBuilder {
                 }
 
                 quote! {
-                    #name: #converter(row.get::<&str, #ty>(concat!(stringify!(#name))))#converter_pos,
+                    #name: #converter(row.get::<#ty, &str>(concat!(stringify!(#name))))#converter_pos,
                 }
             })
             .collect();
@@ -164,7 +164,7 @@ impl EntityBuilder {
         quote! {
             async fn find<'a>(db: &oxidizer::db::DB, condition: &str, arguments: oxidizer::sqlx::any::AnyArguments<'a>) -> oxidizer::db::DBResult<Vec<#name>> {
                 #query;
-                let rows = db.query(&query, arguments).await?;
+                let rows = db.query(query, arguments).await?;
 
                 let mut results: Vec<#name> = Vec::with_capacity(rows.len());
 
@@ -183,7 +183,7 @@ impl EntityBuilder {
         quote! {
             async fn first<'a>(db: &oxidizer::db::DB, condition: &str, arguments: oxidizer::sqlx::any::AnyArguments<'a>) -> oxidizer::db::DBResult<std::option::Option<#name>> {
                 #query;
-                let rows = db.query(&query, arguments).await?;
+                let rows = db.query(query, arguments).await?;
 
                 let mut results: Vec<#name> = Vec::with_capacity(rows.len());
                 for row in rows.iter() {
@@ -211,7 +211,7 @@ impl EntityBuilder {
 
                 #query;
 
-                match db.execute(&query, args![self.#primary_key_ident]).await? {
+                match db.execute(query, args![&self.#primary_key_ident]).await? {
                     0 => Ok(false),
                     _ => {
                         self.#primary_key_ident = key_default;
@@ -275,7 +275,7 @@ impl EntityBuilder {
 
                         #query;
 
-                        let results = db.query(&query, args![self.#local_key]).await?;
+                        let results = db.query(query, args![self.#local_key]).await?;
                         if results.len() == 0 {
                             return Err(oxidizer::db::Error::DoesNotExist);
                         }
@@ -328,7 +328,7 @@ impl EntityBuilder {
 
                         #query;
 
-                        <#model>::find(db, &query, &[ &self.#pk ]).await
+                        <#model>::find(db, query, &[ &self.#pk ]).await
                     }
                 }
             }

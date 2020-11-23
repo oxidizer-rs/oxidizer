@@ -18,7 +18,6 @@
 //         self.execute(query, params).await
 //     }
 
-
 //     pub async fn migrate_tables(&self, ms: &[Migration]) -> Result<Report, Error> {
 //         let ref_migrations: Vec<refinery::Migration> = ms
 //             .as_ref()
@@ -62,11 +61,11 @@
 // }
 
 use super::error::*;
-use sqlx::Done;
-use sqlx::any::AnyRow;
+use sqlx::any::AnyArguments;
 use sqlx::any::AnyPool;
 use sqlx::any::AnyPoolOptions;
-use sqlx::any::AnyArguments;
+use sqlx::any::AnyRow;
+use sqlx::Done;
 
 pub struct DB {
     pool: AnyPool,
@@ -82,13 +81,27 @@ impl DB {
         Ok(DB { pool })
     }
 
-    pub async fn execute<'a>(&self, query: &'a str, arguments: AnyArguments<'a>) -> Result<u64, Error> {
-        let rows_affected = sqlx::query_with(query, arguments).execute(&self.pool).await?.rows_affected();
+    pub async fn execute<'a, Q: Into<&'a str>>(
+        &self,
+        query: Q,
+        arguments: AnyArguments<'a>,
+    ) -> Result<u64, Error> {
+        let rows_affected = sqlx::query_with(query.into(), arguments)
+            .execute(&self.pool)
+            .await?
+            .rows_affected();
         Ok(rows_affected)
     }
 
-    pub async fn query<'a>(&self, query: &'a str, arguments: AnyArguments<'a>) -> Result<Vec<AnyRow>, Error> {
-        let rows = sqlx::query_with(query, arguments).fetch_all(&self.pool).await?;
+    pub async fn query<'a, Q: Into<&'a str>>(
+        &self,
+        query: Q,
+        arguments: AnyArguments<'a>,
+    ) -> Result<Vec<AnyRow>, Error> {
+        let rows = sqlx::query_with(query.into(), arguments)
+            .fetch_all(&self.pool)
+            .await?;
         Ok(rows)
     }
 }
+
