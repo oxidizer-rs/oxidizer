@@ -20,7 +20,7 @@ tls-rustls = ["rustls", "tokio-postgres-rustls"]
 [dependencies]
 chrono = "0.4.19"
 async-trait = "0.1.42"
-tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "0.3", features = ["full"] }
 tokio-postgres = { version= "0.5.4", features = ["with-chrono-0_4"]}
 mobc = "0.5"
 barrel = { version = "0.6.5", features = ["pg"] }
