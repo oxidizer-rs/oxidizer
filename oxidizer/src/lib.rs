@@ -317,26 +317,28 @@
 //!
 
 pub mod db;
+pub use db::types::*;
 pub use db::*;
 
 pub mod entity;
 pub use entity::*;
 
-pub mod migration;
+//pub mod migration;
 
 /// Re-export of [async_trait::async_trait](https://crates.io/crates/async-trait)
 pub use async_trait::async_trait;
-pub use tokio_postgres;
-pub use tokio_postgres::types as db_types;
 
-pub use barrel::types;
+pub use quaint::{
+    connector::{ResultRow, ResultRowRef},
+    Value,
+};
 
 pub use oxidizer_entity_macro::*;
 
 #[cfg(test)]
 mod tests_macro;
 
-#[cfg(test)]
-mod migrations;
+//#[cfg(test)]
+//mod migrations;
 
 pub use std::convert::TryFrom;

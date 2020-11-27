@@ -1,13 +1,5 @@
 #[derive(Debug)]
 pub enum Error {
-    #[cfg(feature = "tls-openssl")]
-    OpensslError(openssl::error::ErrorStack),
-    #[cfg(feature = "tls-rustls")]
-    RustlsError(String),
-
-    PostgresError(tokio_postgres::Error),
-    MobcError(mobc::Error<tokio_postgres::Error>),
-    RefineryError(refinery::Error),
     DoesNotExist,
     ReferencedModelIsNotInDB,
     Other(String),

@@ -40,7 +40,7 @@ impl EntityBuilder {
                     };
                 }
 
-                quote! { &self.#name }
+                quote! { self.#name }
             })
             .collect();
 
@@ -60,10 +60,10 @@ impl EntityBuilder {
                 #query;
                 let rows = db.query(
                     query,
-                    &[#( #fields_value_acessors ),*]
+                    args![#( #fields_value_acessors ),*]
                 ).await?;
                 if let Some(first_row) = rows.first()  {
-                    self.#primary_key_ident = first_row.get::<&str, #primary_key_type>(stringify!(#primary_key_ident));
+                    self.#primary_key_ident = first_row.get(stringify!(#primary_key_ident)).extract()?;
                 } else if creating {
                    return Err(oxidizer::db::Error::Other("Error while saving entity".to_string()));
                 }
@@ -87,11 +87,11 @@ impl EntityBuilder {
                 if let Some(_) = field.parse_custom_type() {
                     let custom_ty = &field.ty;
                     converter = quote! { <#custom_ty>::try_from };
-                    converter_pos  = quote! {?};
+                    converter_pos = quote! {?};
                 }
 
                 quote! {
-                    #name: #converter(row.get::<&str, #ty>(concat!(stringify!(#name))))#converter_pos,
+                    #name: #converter(row.get(concat!(stringify!(#name))).extract()?)#converter_pos,
                 }
             })
             .collect();
@@ -104,7 +104,7 @@ impl EntityBuilder {
             props.get_ignored_fields().map(|field| &field.ty).collect();
 
         quote! {
-            fn from_row(row: &oxidizer::tokio_postgres::Row) -> oxidizer::db::DBResult<Self> {
+            fn from_row(row: oxidizer::ResultRow) -> oxidizer::db::DBResult<Self> {
                 let mut obj: Self = Self{
                     #( #fields_all_loaders )*
                     #(
@@ -170,13 +170,13 @@ impl EntityBuilder {
         let name = props.get_name();
         let query = DefaultBuilder::build_find_query(props);
         quote! {
-            async fn find(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<Vec<#name>> {
+            async fn find(db: &oxidizer::db::DB, condition: &str, params: &'_ [oxidizer::Value<'_>]) -> oxidizer::db::DBResult<Vec<#name>> {
                 #query;
                 let rows = db.query(&query, params).await?;
 
                 let mut results: Vec<#name> = Vec::with_capacity(rows.len());
 
-                for row in rows.iter() {
+                for row in rows.into_iter() {
                     results.push(Self::from_row(row)?);
                 }
 
@@ -189,12 +189,12 @@ impl EntityBuilder {
         let name = props.get_name();
         let query = DefaultBuilder::build_first_query(props);
         quote! {
-            async fn first(db: &oxidizer::db::DB, condition: &str, params: &'_ [&'_ (dyn oxidizer::db_types::ToSql + Sync)]) -> oxidizer::db::DBResult<std::option::Option<#name>> {
+            async fn first(db: &oxidizer::db::DB, condition: &str, params: &'_ [oxidizer::Value<'_>]) -> oxidizer::db::DBResult<std::option::Option<#name>> {
                 #query;
                 let rows = db.query(&query, params).await?;
 
                 let mut results: Vec<#name> = Vec::with_capacity(rows.len());
-                for row in rows.iter() {
+                for row in rows.into_iter() {
                     results.push(Self::from_row(row)?);
                 }
 
@@ -219,7 +219,7 @@ impl EntityBuilder {
 
                 #query;
 
-                match db.execute(&query, &[&self.#primary_key_ident]).await? {
+                match db.execute(&query, args![self.#primary_key_ident]).await? {
                     0 => Ok(false),
                     _ => {
                         self.#primary_key_ident = key_default;
@@ -407,7 +407,7 @@ impl EntityBuilder {
 
                 #from_row_fn
 
-                #create_migration_fn
+                //#create_migration_fn
 
                 fn get_table_name() -> String {
                     #table_name.to_string()
@@ -422,7 +422,7 @@ impl EntityBuilder {
         // Hand the output tokens back to the compiler
         let r = TokenStream::from(expanded);
 
-        // println!("{}", r);
+        //println!("{}", r);
 
         r
     }

@@ -1,122 +1,66 @@
-use async_trait::async_trait;
-use mobc::Manager;
-use mobc::Pool;
+use quaint::{pooled::Quaint, prelude::*};
 
-use super::connections;
-use connections::ConnectionProvider;
-
-use refinery::{Report, Runner};
-use std::str::FromStr;
-
-use super::super::migration::Migration;
-use super::error::*;
-
-use barrel::backend::Pg;
-use tokio_postgres::{row::Row, types::ToSql, Client};
-
-struct ConnectionManager {
-    provider: Box<dyn ConnectionProvider>,
-}
-
-#[async_trait]
-impl Manager for ConnectionManager {
-    type Connection = Client;
-    type Error = tokio_postgres::Error;
-
-    async fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        self.provider.connect().await
-    }
-
-    async fn check(&self, conn: Self::Connection) -> Result<Self::Connection, Self::Error> {
-        conn.simple_query("").await?;
-        Ok(conn)
-    }
-}
+use super::Error;
 
 #[derive(Clone)]
 pub struct DB {
-    pool: Pool<ConnectionManager>,
+    pool: Quaint,
 }
 
 unsafe impl std::marker::Sync for DB {}
 
 impl DB {
-    pub async fn connect(uri: &str, max_open: u64, ca_file: Option<&str>) -> Result<Self, Error> {
-        let config = tokio_postgres::Config::from_str(uri).map_err(Error::PostgresError)?;
+    pub async fn connect(uri: &str, max_open: usize, ca_file: Option<&str>) -> Result<Self, Error> {
+        let mut builder = Quaint::builder(uri)?;
+        builder.connection_limit(max_open);
+        let pool = builder.build();
 
-        let provider = connections::create_connection_provider(config, ca_file).await?;
-        let manager = ConnectionManager { provider };
-
-        Ok(DB {
-            pool: Pool::builder().max_open(max_open).build(manager),
-        })
+        Ok(DB { pool })
     }
 
-    pub async fn create(
-        &self,
-        query: &str,
-        params: &'_ [&'_ (dyn ToSql + Sync)],
-    ) -> Result<u64, Error> {
-        self.execute(query, params).await
+    pub async fn execute(&self, query: &str, params: &'_ [Value<'_>]) -> Result<u64, Error> {
+        let client = self.pool.check_out().await?;
+
+        let result = client.execute_raw(query, params).await?;
+
+        Ok(result)
     }
 
-    pub async fn execute(
-        &self,
-        query: &str,
-        params: &'_ [&'_ (dyn ToSql + Sync)],
-    ) -> Result<u64, Error> {
-        let client = self.pool.get().await.map_err(Error::MobcError)?;
+    pub async fn query(&self, query: &str, params: &'_ [Value<'_>]) -> Result<ResultSet, Error> {
+        let client = self.pool.check_out().await?;
 
-        let insert = client.prepare(query).await.map_err(Error::PostgresError)?;
+        let result = client.query_raw(query, params).await?;
 
-        client
-            .execute(&insert, params)
-            .await
-            .map_err(Error::PostgresError)
+        Ok(result)
     }
 
-    pub async fn query(
-        &self,
-        query: &str,
-        params: &'_ [&'_ (dyn ToSql + Sync)],
-    ) -> Result<Vec<Row>, Error> {
-        let client = self.pool.get().await.map_err(Error::MobcError)?;
+    //pub async fn migrate_tables(&self, ms: &[Migration]) -> Result<Report, Error> {
+    //let ref_migrations: Vec<refinery::Migration> = ms
+    //.as_ref()
+    //.iter()
+    //.enumerate()
+    //.filter_map(|(i, m)| {
+    //let sql = m.raw.make::<Pg>();
 
-        let insert = client.prepare(query).await.map_err(Error::PostgresError)?;
+    //let name = format!("V{}__{}.rs", i, m.name);
 
-        client
-            .query(&insert, params)
-            .await
-            .map_err(Error::PostgresError)
-    }
+    //let migration = refinery::Migration::unapplied(&name, &sql).unwrap();
 
-    pub async fn migrate_tables(&self, ms: &[Migration]) -> Result<Report, Error> {
-        let ref_migrations: Vec<refinery::Migration> = ms
-            .as_ref()
-            .iter()
-            .enumerate()
-            .filter_map(|(i, m)| {
-                let sql = m.raw.make::<Pg>();
+    //Some(migration)
+    //})
+    //.collect();
 
-                let name = format!("V{}__{}.rs", i, m.name);
+    //let runner = refinery::Runner::new(&ref_migrations);
 
-                let migration = refinery::Migration::unapplied(&name, &sql).unwrap();
+    //self.migrate(runner).await
+    //}
 
-                Some(migration)
-            })
-            .collect();
-
-        let runner = refinery::Runner::new(&ref_migrations);
-
-        self.migrate(runner).await
-    }
-
-    pub async fn migrate(&self, runner: Runner) -> Result<Report, Error> {
-        let runner = runner.set_abort_divergent(false);
-        let mut client = self.pool.get().await.map_err(Error::MobcError)?;
-        Ok(runner
-            .run_async(&mut *client)
-            .await
-            .map_err(Error::RefineryError)?)
-    }
+    //pub async fn migrate(&self, runner: Runner) -> Result<Report, Error> {
+    //let runner = runner.set_abort_divergent(false);
+    //let mut client = self.pool.get().await.map_err(Error::MobcError)?;
+    //Ok(runner
+    //.run_async(&mut *client)
+    //.await
+    //.map_err(Error::RefineryError)?)
+    //}
 }

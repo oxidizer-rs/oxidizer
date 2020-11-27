@@ -1,5 +1,8 @@
 use chrono;
 
+use crate as oxidizer;
+use crate::*;
+
 #[tokio::test]
 async fn test_db_raw_query() {
     let db = super::test_utils::create_test_db("test_db_raw_query").await;
@@ -21,12 +24,12 @@ async fn test_db_raw_query() {
     let rows_changed = db
         .execute(
             query,
-            &[
-                &"abcde",
-                &"film title",
-                &chrono::NaiveDate::from_ymd(2020, 8, 30),
-                &"action",
-                &(2 as i32),
+            args![
+                "abcde",
+                "film title",
+                chrono::NaiveDate::from_ymd(2020, 8, 30),
+                "action",
+                (2 as i32)
             ],
         )
         .await
@@ -34,7 +37,10 @@ async fn test_db_raw_query() {
     assert_eq!(1, rows_changed);
 
     let query = "select * from films where nn = $1";
-    let row = db.query(query, &[&(2 as i32)]).await.unwrap();
+    let row = db.query(query, args![(2 as i32)]).await.unwrap();
     assert_eq!(1, row.len());
-    assert_eq!("abcde", row[0].get::<&str, &str>("code"));
+    assert_eq!(
+        "abcde",
+        (row.get(0).unwrap().get("code").extract() as DBResult<String>).unwrap()
+    );
 }

@@ -1,6 +1,6 @@
 use oxidizer::*;
 
-// mod tmp;
+//mod tmp;
 
 #[derive(Entity, Default)]
 pub struct TestCustomPrimaryKey {
@@ -10,13 +10,13 @@ pub struct TestCustomPrimaryKey {
     email: String,
 }
 
-#[derive(Entity, Default)]
-pub struct TestCustomPrimaryKey2 {
-    #[primary_key(increments)]
-    id: i32,
+//#[derive(Entity, Default)]
+//pub struct TestCustomPrimaryKey2 {
+//#[primary_key(increments)]
+//id: i32,
 
-    email: String,
-}
+//email: String,
+//}
 
 fn main() {}
 
@@ -46,9 +46,9 @@ mod test {
         .await
         .unwrap();
 
-        db.migrate_tables(&[TestCustomPrimaryKey::create_migration().unwrap()])
-            .await
-            .unwrap();
+        //db.migrate_tables(&[TestCustomPrimaryKey::create_migration().unwrap()])
+        //.await
+        //.unwrap();
 
         let mut entity = TestCustomPrimaryKey::default();
         let creating = entity.save(&db).await.unwrap();

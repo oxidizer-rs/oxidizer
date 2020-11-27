@@ -1,9 +1,9 @@
-use tokio_postgres::Row;
+use quaint::prelude::*;
 
-use super::async_trait;
-use super::db::{DBResult, DB};
-use super::db_types::ToSql;
-use super::migration::Migration;
+use crate::async_trait;
+use crate::db::{DBResult, DB};
+//use crate::migration::Migration;
+use crate::ResultRow;
 
 /// Trait implemented by all derived Entitities
 #[async_trait]
@@ -13,18 +13,10 @@ pub trait IEntity: Sized {
 
     fn is_synced_with_db(&self) -> bool;
 
-    fn from_row(row: &Row) -> DBResult<Self>;
-    fn create_migration() -> DBResult<Migration>;
+    fn from_row(row: ResultRow) -> DBResult<Self>;
+    //fn create_migration() -> DBResult<Migration>;
     fn get_table_name() -> String;
 
-    async fn find(
-        db: &DB,
-        query: &str,
-        params: &'_ [&'_ (dyn ToSql + Sync)],
-    ) -> DBResult<Vec<Self>>;
-    async fn first(
-        db: &DB,
-        query: &str,
-        params: &'_ [&'_ (dyn ToSql + Sync)],
-    ) -> DBResult<Option<Self>>;
+    async fn find(db: &DB, query: &str, params: &'_ [Value<'_>]) -> DBResult<Vec<Self>>;
+    async fn first(db: &DB, query: &str, params: &'_ [Value<'_>]) -> DBResult<Option<Self>>;
 }
