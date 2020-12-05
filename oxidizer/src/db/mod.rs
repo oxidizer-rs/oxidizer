@@ -4,6 +4,12 @@ pub mod types;
 pub mod macros;
 pub use macros::*;
 
+pub mod generic_client;
+pub use generic_client::*;
+
+pub mod transaction;
+pub use transaction::*;
+
 pub mod db;
 pub use db::DB;
 

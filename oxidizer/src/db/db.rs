@@ -1,6 +1,10 @@
+use async_trait::async_trait;
 use quaint::{pooled::Quaint, prelude::*};
+use std::future::Future;
 
-use super::Error;
+use crate::transaction::Transaction;
+use crate::Error;
+use crate::GenericClient;
 
 #[derive(Clone)]
 pub struct DB {
@@ -18,7 +22,35 @@ impl DB {
         Ok(DB { pool })
     }
 
-    pub async fn execute(&self, query: &str, params: &'_ [Value<'_>]) -> Result<u64, Error> {
+    pub async fn create_transaction(&self) -> Result<Transaction, Error> {
+        let transaction = Transaction::from_pool(&self.pool).await?;
+
+        Ok(transaction)
+    }
+
+    pub async fn run_transaction<F, Fut, T>(&self, f: F) -> Result<T, Error>
+    where
+        F: FnOnce(&Transaction) -> Fut,
+        Fut: Future<Output = Result<T, Error>>,
+    {
+        let transaction = self.create_transaction().await?;
+
+        match f(&transaction).await {
+            Ok(t) => {
+                transaction.commit().await?;
+                Ok(t)
+            }
+            Err(err) => {
+                transaction.rollback().await?;
+                Err(err)
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl GenericClient for DB {
+    async fn execute(&self, query: &str, params: &'_ [Value<'_>]) -> Result<u64, Error> {
         let client = self.pool.check_out().await?;
 
         let result = client.execute_raw(query, params).await?;
@@ -26,41 +58,11 @@ impl DB {
         Ok(result)
     }
 
-    pub async fn query(&self, query: &str, params: &'_ [Value<'_>]) -> Result<ResultSet, Error> {
+    async fn query(&self, query: &str, params: &'_ [Value<'_>]) -> Result<ResultSet, Error> {
         let client = self.pool.check_out().await?;
 
         let result = client.query_raw(query, params).await?;
 
         Ok(result)
     }
-
-    //pub async fn migrate_tables(&self, ms: &[Migration]) -> Result<Report, Error> {
-    //let ref_migrations: Vec<refinery::Migration> = ms
-    //.as_ref()
-    //.iter()
-    //.enumerate()
-    //.filter_map(|(i, m)| {
-    //let sql = m.raw.make::<Pg>();
-
-    //let name = format!("V{}__{}.rs", i, m.name);
-
-    //let migration = refinery::Migration::unapplied(&name, &sql).unwrap();
-
-    //Some(migration)
-    //})
-    //.collect();
-
-    //let runner = refinery::Runner::new(&ref_migrations);
-
-    //self.migrate(runner).await
-    //}
-
-    //pub async fn migrate(&self, runner: Runner) -> Result<Report, Error> {
-    //let runner = runner.set_abort_divergent(false);
-    //let mut client = self.pool.get().await.map_err(Error::MobcError)?;
-    //Ok(runner
-    //.run_async(&mut *client)
-    //.await
-    //.map_err(Error::RefineryError)?)
-    //}
 }

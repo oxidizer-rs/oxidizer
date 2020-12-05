@@ -1,12 +1,8 @@
-use darling::FromMeta;
-use inflector::cases::snakecase::to_snake_case;
-use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote, quote_spanned};
-use syn::{parse_macro_input, spanned::Spanned, DeriveInput, Type};
+use quote::{format_ident, quote};
 
 use crate::attrs::HasManyAttr;
-use crate::attrs::{EntityAttr, IndexAttr, RelationAttr};
+use crate::attrs::RelationAttr;
 use crate::field_extras::*;
 use crate::props::*;
 use crate::utils::is_integer_type;
@@ -124,7 +120,7 @@ impl Builder for PostgresBuilder {
         }
     }
 
-    fn build_relation_get_query(props: &Props, relation: &RelationAttr) -> TokenStream2 {
+    fn build_relation_get_query(_: &Props, relation: &RelationAttr) -> TokenStream2 {
         let model = format_ident!("{}", relation.model);
         let key = format_ident!("{}", relation.key);
 
@@ -134,7 +130,7 @@ impl Builder for PostgresBuilder {
         }
     }
 
-    fn build_relation_has_many_get_condition(props: &Props, attr: &HasManyAttr) -> TokenStream2 {
+    fn build_relation_has_many_get_condition(_: &Props, attr: &HasManyAttr) -> TokenStream2 {
         let field = &attr.field;
 
         quote! {

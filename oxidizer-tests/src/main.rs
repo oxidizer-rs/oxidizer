@@ -1,11 +1,11 @@
 use oxidizer::*;
 
-//mod tmp;
+mod tmp;
 
 #[derive(Entity, Default)]
 pub struct TestCustomPrimaryKey {
     #[primary_key()]
-    name: String,
+    name: i32,
 
     email: String,
 }

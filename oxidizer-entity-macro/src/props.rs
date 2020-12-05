@@ -2,20 +2,16 @@ use inflector::cases::snakecase::to_snake_case;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, quote_spanned};
-use syn::{
-    punctuated::Punctuated, spanned::Spanned, token::Comma, Data, DataStruct, DeriveInput, Field,
-    Fields, Ident, Meta, PathArguments, PathSegment, Type,
-};
+use syn::{spanned::Spanned, Data, DataStruct, DeriveInput, Field, Fields, Ident};
 
 use super::attrs::HasManyAttr;
-use super::attrs::{EntityAttr, IndexAttr, PrimaryKeyAttr};
+use super::attrs::{EntityAttr, PrimaryKeyAttr};
 use super::field_extras::*;
 use super::utils::is_integer_type;
 
 pub struct Props {
     input: DeriveInput,
     attrs: Option<EntityAttr>,
-    indexes: Vec<IndexAttr>,
     has_many_attrs: Vec<HasManyAttr>,
 }
 
@@ -25,14 +21,12 @@ impl Props {
     pub fn new(
         input: DeriveInput,
         attrs: Option<EntityAttr>,
-        indexes: Vec<IndexAttr>,
         has_many_attrs: Vec<HasManyAttr>,
     ) -> Self {
         Props {
-            input: input,
-            attrs: attrs,
-            indexes: indexes,
-            has_many_attrs: has_many_attrs,
+            input,
+            attrs,
+            has_many_attrs,
         }
     }
 
@@ -108,14 +102,6 @@ impl Props {
         self.get_fields_all()
             .map(|field| field.is_increments())
             .collect()
-    }
-
-    fn build_db_types(&self, fields: GetFieldsIter) -> Vec<TokenStream2> {
-        fields.map(|field| field.get_db_type()).collect()
-    }
-
-    pub fn get_fields_all_db_types(&self) -> Vec<TokenStream2> {
-        self.build_db_types(self.get_fields_all())
     }
 
     pub fn get_primary_key_field(&self) -> Option<&Field> {
@@ -206,10 +192,6 @@ impl Props {
         self.get_fields_all()
             .filter(|field| field.parse_relation().is_some())
             .collect()
-    }
-
-    pub fn get_indexes(&self) -> Vec<IndexAttr> {
-        self.indexes.clone()
     }
 
     pub fn get_has_many_attrs(&self) -> Vec<HasManyAttr> {

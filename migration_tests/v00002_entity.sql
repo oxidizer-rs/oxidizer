@@ -1,0 +1,8 @@
+
+CREATE TABLE IF NOT EXISTS entity_table (
+   filename VARCHAR(100) NOT NULL,
+   hash VARCHAR(64) NOT NULL,
+   executed_at TIMESTAMP WITH TIME ZONE,
+   PRIMARY KEY (filename)
+)
+

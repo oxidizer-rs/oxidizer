@@ -4,37 +4,37 @@ use std::convert::TryFrom;
 use crate::error::*;
 
 /// blanket
-pub trait ToDBType<'a> {
-    fn to_db_type(self) -> Value<'a>;
+pub trait ToCompatibleType<'a> {
+    fn to_compatible_type(self) -> Value<'a>;
 }
 
-impl<'a, T> ToDBType<'a> for T
+impl<'a, T> ToCompatibleType<'a> for T
 where
     T: Into<Value<'a>>,
 {
-    fn to_db_type(self) -> Value<'a> {
+    fn to_compatible_type(self) -> Value<'a> {
         self.into()
     }
 }
 
-pub trait ToDBTypeStringRef<'a> {
-    fn to_db_type(self) -> Value<'a>;
+pub trait ToCompatibleTypeStringRef<'a> {
+    fn to_compatible_type(self) -> Value<'a>;
 }
 
-impl<'a> ToDBTypeStringRef<'a> for &'a String {
-    fn to_db_type(self) -> Value<'a> {
+impl<'a> ToCompatibleTypeStringRef<'a> for &'a String {
+    fn to_compatible_type(self) -> Value<'a> {
         self.as_str().into()
     }
 }
 
-pub trait DBTypeExtract<'a, T>
+pub trait CompatibleTypeExtract<'a, T>
 where
     T: TryFrom<Value<'a>>,
 {
     fn extract(self) -> DBResult<T>;
 }
 
-impl<'a, T> DBTypeExtract<'a, T> for Option<&Value<'a>>
+impl<'a, T> CompatibleTypeExtract<'a, T> for Option<&Value<'a>>
 where
     T: TryFrom<Value<'a>>,
 {

@@ -2,16 +2,17 @@
 //! A simple orm based on [tokio-postgres](https://crates.io/crates/tokio-postgres) and [refinery](https://crates.io/crates/refinery)
 //! ```ignore
 //! #[async_trait]
-//! pub trait Entity: Sized {
+//! pub trait IEntity: Sized {
 //!     async fn save(&mut self, db: &DB) -> DBResult<bool>;
 //!     async fn delete(&mut self, db: &DB) -> DBResult<bool>;
 //!
-//!     fn from_row(row: &Row) -> Self;
-//!     fn create_migration() -> DBResult<Migration>;
+//!     fn is_synced_with_db(&self) -> bool;
+//!
+//!     fn from_row(row: ResultRow) -> DBResult<Self>;
 //!     fn get_table_name() -> String;
 //!
-//!     async fn find(db: &DB, query: &str, params: &'_ [&'_ (dyn ToSql + Sync)]) -> DBResult<Vec<Self>>;
-//!     async fn first(db: &DB, query: &str, params: &'_ [&'_ (dyn ToSql + Sync)]) -> DBResult<Option<Self>>;
+//!     async fn find(db: &DB, query: &str, params: &'_ [Value<'_>]) -> DBResult<Vec<Self>>;
+//!     async fn first(db: &DB, query: &str, params: &'_ [Value<'_>]) -> DBResult<Option<Self>>;
 //! }
 //! ```
 //! ```
@@ -26,7 +27,6 @@
 //!
 //!     name: String,
 //!
-//!     #[indexed]
 //!     integer: i32,
 //!     integer64: i64,
 //!
@@ -45,7 +45,8 @@
 //!     let ca_file: Option<&str> = None;
 //!     let db = DB::connect(&uri, max_open, ca_file).await.unwrap();
 //!
-//!     db.migrate_tables(&[MyEntity::create_migration().unwrap()]).await.unwrap();
+//!     let migrations = Runner::from_directory("./migrations").await.unwrap();
+//!     migrations.execute(&db).await.unwrap();
 //!
 //!     let mut entity = MyEntity::default();
 //!     let creating = entity.save(&db).await.unwrap();
@@ -83,19 +84,6 @@
 //! }
 //! ```
 //!
-//! ### #[indexed]
-//! Make the specified field indexed in the db
-//!
-//! ```
-//! use oxidizer::*;
-//! #[derive(Entity)]
-//! struct Entity {
-//!     #[primary_key(increments)]
-//!     id: i32,
-//!     #[indexed]
-//!     name: String,
-//! }
-//! ```
 //!
 //! ### #[relation]
 //! See [Relations](#Relations)
@@ -116,22 +104,6 @@
 //! struct Entity {
 //!     #[primary_key(increments)]
 //!     id: i32
-//! }
-//! ```
-//!
-//! ### #[index]
-//! Creates a custom index/constraint on one or more column
-//!
-//! ```
-//! use oxidizer::*;
-//! #[derive(Default, Entity)]
-//! #[index(name="myindex", columns="name, email", unique)]
-//! struct MyEntity {
-//!     #[primary_key(increments)]
-//!     id: i32,
-//!
-//!     name: String,
-//!     email: String,
 //! }
 //! ```
 //!
@@ -323,7 +295,7 @@ pub use db::*;
 pub mod entity;
 pub use entity::*;
 
-//pub mod migration;
+pub mod migration;
 
 /// Re-export of [async_trait::async_trait](https://crates.io/crates/async-trait)
 pub use async_trait::async_trait;

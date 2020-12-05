@@ -12,10 +12,8 @@ mod utils;
     Entity,
     attributes(
         primary_key,
-        indexed,
         relation,
         entity,
-        index,
         has_many,
         field_ignore,
         custom_type,

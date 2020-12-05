@@ -2,11 +2,11 @@ use darling::FromMeta;
 use inflector::cases::snakecase::to_snake_case;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, quote, quote_spanned};
-use syn::{parse_macro_input, spanned::Spanned, DeriveInput, Type};
+use quote::{format_ident, quote};
+use syn::{parse_macro_input, DeriveInput};
 
+use super::attrs::EntityAttr;
 use super::attrs::HasManyAttr;
-use super::attrs::{EntityAttr, IndexAttr};
 use super::field_extras::*;
 use super::props::*;
 use super::sql_builder::{Builder, DefaultBuilder};
@@ -112,56 +112,6 @@ impl EntityBuilder {
                     )*
                 };
                 Ok(obj)
-            }
-        }
-    }
-
-    fn build_create_migration_fn(&self, props: &Props) -> TokenStream2 {
-        let table_name = props.get_table_name();
-        let fields_all_names = props.get_fields_all_names();
-        let fields_all_db_types = props.get_fields_all_db_types();
-        let fields_all_nullable = props.get_fields_all_nullable();
-        let fields_all_indexed = props.get_fields_all_indexed();
-        let fields_all_primary: Vec<bool> = props
-            .get_fields_all_primary()
-            .iter()
-            .map(|attr| attr.is_some())
-            .collect();
-
-        let indexes: Vec<TokenStream2> = props
-            .get_indexes()
-            .iter()
-            .map(|index| {
-                let index_name = &index.name;
-                let columns: Vec<&str> = index.columns.split(",").map(|c| c.trim()).collect();
-                let unique = index.unique;
-                quote! {
-                    t.add_index(
-                        #index_name,
-                        oxidizer::types::index(vec![ #(#columns),* ]).unique(#unique)
-                    );
-                }
-            })
-            .collect();
-
-        quote! {
-             fn create_migration() -> oxidizer::db::DBResult<oxidizer::migration::Migration> {
-                let mut m = oxidizer::migration::Migration::new(#table_name);
-                m.raw.create_table(#table_name, |t| {
-                    #(t
-                        .add_column(
-                            stringify!(#fields_all_names),
-                            #fields_all_db_types
-                                .nullable(#fields_all_nullable)
-                                .indexed(#fields_all_indexed)
-                                .primary(#fields_all_primary)
-                        )
-                    ;)*
-
-                    #(#indexes)*
-                });
-
-                Ok(m)
             }
         }
     }
@@ -349,18 +299,12 @@ impl EntityBuilder {
 
         let mut attrs: Option<EntityAttr> = None;
 
-        let mut indexes: Vec<IndexAttr> = vec![];
-
         let mut has_many_attrs: Vec<HasManyAttr> = vec![];
 
         for option in input.attrs.iter() {
             let option = option.parse_meta().unwrap();
             if let Ok(v) = EntityAttr::from_meta(&option) {
                 attrs = Some(v);
-            }
-
-            if let Ok(v) = IndexAttr::from_meta(&option) {
-                indexes.push(v);
             }
 
             if let Ok(v) = HasManyAttr::from_meta(&option) {
@@ -371,7 +315,7 @@ impl EntityBuilder {
         // eprintln!("{:#?}", input);
         // eprintln!("{:#?}", attrs);
 
-        let props = Props::new(input, attrs, indexes, has_many_attrs);
+        let props = Props::new(input, attrs, has_many_attrs);
 
         if let Some(ts) = props.check() {
             return ts;
@@ -381,7 +325,6 @@ impl EntityBuilder {
         let delete_fn = self.build_delete_fn(&props);
         let is_synced_with_db = self.build_is_synced_with_db_fn(&props);
         let from_row_fn = self.build_from_row_fn(&props);
-        let create_migration_fn = self.build_create_migration_fn(&props);
         let find_fn = self.build_find_fn(&props);
         let first_fn = self.build_first_fn(&props);
 
@@ -407,8 +350,6 @@ impl EntityBuilder {
 
                 #from_row_fn
 
-                //#create_migration_fn
-
                 fn get_table_name() -> String {
                     #table_name.to_string()
                 }
@@ -422,7 +363,7 @@ impl EntityBuilder {
         // Hand the output tokens back to the compiler
         let r = TokenStream::from(expanded);
 
-        //println!("{}", r);
+        println!("{}", r);
 
         r
     }

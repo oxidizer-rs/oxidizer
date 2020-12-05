@@ -2,7 +2,6 @@ use quaint::prelude::*;
 
 use crate::async_trait;
 use crate::db::{DBResult, DB};
-//use crate::migration::Migration;
 use crate::ResultRow;
 
 /// Trait implemented by all derived Entitities
@@ -14,7 +13,6 @@ pub trait IEntity: Sized {
     fn is_synced_with_db(&self) -> bool;
 
     fn from_row(row: ResultRow) -> DBResult<Self>;
-    //fn create_migration() -> DBResult<Migration>;
     fn get_table_name() -> String;
 
     async fn find(db: &DB, query: &str, params: &'_ [Value<'_>]) -> DBResult<Vec<Self>>;

@@ -1,7 +1,7 @@
 use oxidizer::*;
 
 pub struct TestCustomPrimaryKey {
-    name: String,
+    name: i32,
 
     email: String,
 }
@@ -10,7 +10,7 @@ pub struct TestCustomPrimaryKey {
 impl oxidizer::entity::IEntity for TestCustomPrimaryKey {
     async fn save(&mut self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<bool> {
         let mut creating = false;
-        let primary_key_default: String = Default::default();
+        let primary_key_default: i32 = Default::default();
         if self.name == primary_key_default {
             creating = true;
         }
@@ -42,7 +42,7 @@ impl oxidizer::entity::IEntity for TestCustomPrimaryKey {
         Ok(creating)
     }
     async fn delete(&mut self, db: &oxidizer::db::DB) -> oxidizer::db::DBResult<bool> {
-        let key_default: String = Default::default();
+        let key_default: i32 = Default::default();
         if self.name == key_default {
             return Ok(false);
         }
@@ -60,7 +60,7 @@ impl oxidizer::entity::IEntity for TestCustomPrimaryKey {
         }
     }
     fn is_synced_with_db(&self) -> bool {
-        let key_default: String = Default::default();
+        let key_default: i32 = Default::default();
         self.name != key_default
     }
     async fn find(
