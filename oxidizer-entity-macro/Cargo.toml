@@ -18,6 +18,6 @@ proc-macro = true
 quote = "1.0.7"
 syn = { version = "1.0.54", features = ["full", "extra-traits"] }
 proc-macro2 = "1.0.24"
-darling = "0.10.3"
+darling = "0.11.0"
 async-trait = "0.1.42"
 Inflector = "0.11.4"
