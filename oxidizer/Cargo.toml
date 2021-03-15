@@ -22,7 +22,7 @@ chrono = "0.4.19"
 async-trait = "0.1.48"
 tokio = { version = "0.2", features = ["full"] }
 tokio-postgres = { version= "0.5.4", features = ["with-chrono-0_4"]}
-mobc = "0.5"
+mobc = "0.7"
 barrel = { version = "0.6.5", features = ["pg"] }
 refinery = { version = "0.4.0", features = ["tokio-postgres"]}
 cfg-if = "1.0.0"
