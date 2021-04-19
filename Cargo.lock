@@ -536,15 +536,17 @@ dependencies = [
 
 [[package]]
 name = "mobc"
-version = "0.5.12"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6813d7da9f2399927e4f83d741165869376b5b3b7d9a09945713b48ce4241cf"
+checksum = "db0dcf244160856f43ccecdebc93d7dd4e6353666003b61beb053b3b09083671"
 dependencies = [
  "async-trait",
- "futures",
+ "futures-channel",
+ "futures-core",
  "futures-timer",
+ "futures-util",
  "log",
- "tokio",
+ "tokio 1.5.0",
 ]
 
 [[package]]
@@ -650,7 +652,7 @@ dependencies = [
  "postgres-openssl",
  "refinery",
  "rustls",
- "tokio",
+ "tokio 0.2.22",
  "tokio-postgres",
  "tokio-postgres-rustls",
 ]
@@ -672,7 +674,7 @@ name = "oxidizer-tests"
 version = "0.2.1"
 dependencies = [
  "oxidizer",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -752,6 +754,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "282adbf10f2698a7a77f8e983a74b2d18176c19a7fd32a45446139ae7b02b715"
 
 [[package]]
+name = "pin-project-lite"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc0e1f259c92177c30a4c9d177246edd0a3568b25756a977d0632cf8fa37e905"
+
+[[package]]
 name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -772,7 +780,7 @@ dependencies = [
  "bytes",
  "futures",
  "openssl",
- "tokio",
+ "tokio 0.2.22",
  "tokio-openssl",
  "tokio-postgres",
 ]
@@ -1179,11 +1187,22 @@ dependencies = [
  "mio-named-pipes",
  "mio-uds",
  "num_cpus",
- "pin-project-lite",
+ "pin-project-lite 0.1.7",
  "signal-hook-registry",
  "slab",
  "tokio-macros",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "tokio"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83f0c8e7c0addab50b663055baf787d0af7f413a46e6e7fb9559a4e4db7137a5"
+dependencies = [
+ "autocfg",
+ "num_cpus",
+ "pin-project-lite 0.2.6",
 ]
 
 [[package]]
@@ -1204,7 +1223,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c4b08c5f4208e699ede3df2520aca2e82401b2de33f45e96696a074480be594"
 dependencies = [
  "openssl",
- "tokio",
+ "tokio 0.2.22",
 ]
 
 [[package]]
@@ -1222,10 +1241,10 @@ dependencies = [
  "parking_lot",
  "percent-encoding",
  "phf",
- "pin-project-lite",
+ "pin-project-lite 0.1.7",
  "postgres-protocol",
  "postgres-types",
- "tokio",
+ "tokio 0.2.22",
  "tokio-util",
 ]
 
@@ -1239,7 +1258,7 @@ dependencies = [
  "futures",
  "ring",
  "rustls",
- "tokio",
+ "tokio 0.2.22",
  "tokio-postgres",
  "tokio-rustls",
  "webpki",
@@ -1253,7 +1272,7 @@ checksum = "e12831b255bcfa39dc0436b01e19fea231a37db570686c06ee72c423479f889a"
 dependencies = [
  "futures-core",
  "rustls",
- "tokio",
+ "tokio 0.2.22",
  "webpki",
 ]
 
@@ -1267,8 +1286,8 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "log",
- "pin-project-lite",
- "tokio",
+ "pin-project-lite 0.1.7",
+ "tokio 0.2.22",
 ]
 
 [[package]]
