@@ -16,6 +16,10 @@
 [mit-url]: https://github.com/oxidizer-rs/oxidizer/blob/main/LICENSE
 [glitter-url]: https://gitter.im/oxidizer-rs/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge
 
+## ⚠️ Important ⚠️
+
+Oxidizer is now EOL. Unfortunately, we have not been able to allocate time and effort to push Oxidizer forward. the code will remain available in GitHub in archived mode and everyone is welcome to fork and work on features as they wish.
+
 ## Overview
 
 A Rust ORM based on [tokio-postgres](https://crates.io/crates/tokio-postgres) and [refinery](https://crates.io/crates/refinery) that helps you reduce the boilerplate of writing entities, tables & migrations when using tokio-postgres and refinery.
